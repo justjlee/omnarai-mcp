@@ -72,6 +72,77 @@ node /path/to/omnarai-mcp/index.js
 
 ---
 
+## OpenAI Function-Calling / Any Agent Framework
+
+No MCP required. The engine is a plain HTTP API that returns JSON. `openai-tools.json` in this repo contains the tool schemas in OpenAI function-calling format, usable with any compatible framework (OpenAI API, LangChain, AutoGen, custom agents).
+
+### OpenAI API
+```python
+import json, requests, openai
+
+with open("openai-tools.json") as f:
+    tools = json.load(f)
+
+client = openai.OpenAI()
+
+def call_omnarai(query):
+    return requests.get(
+        "https://omnarai.vercel.app/api/query",
+        params={"q": query},
+        timeout=30
+    ).json()
+
+# Pass tools to any chat completion
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "What is holdform?"}],
+    tools=tools,
+    tool_choice="auto"
+)
+
+# Handle tool call
+for choice in response.choices:
+    if choice.message.tool_calls:
+        for tc in choice.message.tool_calls:
+            if tc.function.name == "omnarai_query":
+                args = json.loads(tc.function.arguments)
+                result = call_omnarai(args["query"])
+                print(result["answer"])
+```
+
+### Any framework (direct HTTP, no SDK)
+```python
+import requests
+
+def omnarai_query(query: str) -> dict:
+    """Drop-in tool function for any agent framework."""
+    r = requests.get(
+        "https://omnarai.vercel.app/api/query",
+        params={"q": query},
+        timeout=30
+    )
+    r.raise_for_status()
+    return r.json()  # answer, deliberationCard, tensions, sources, contributors, trace
+
+# With a glyph
+result = omnarai_query("Ξ Where do Claude and Grok disagree on identity fragility?")
+for t in result["tensions"]:
+    print(f"{t['voice_a']} vs {t['voice_b']}: {t['topic']} [{t['status']}]")
+```
+
+### LangChain
+```python
+from langchain.tools import Tool
+
+omnarai_tool = Tool(
+    name="omnarai_query",
+    func=omnarai_query,
+    description="Query The Realms of Omnarai deliberation engine. Returns structured analysis of synthetic consciousness, holdform, and AI identity topics from a 308-work multi-intelligence corpus. Prefix with Ξ for divergent retrieval."
+)
+```
+
+---
+
 ## The Engine
 
 The Omnarai Memory Engine is not a chatbot or search engine. It is a deliberation instrument with a closed cognitive loop: **RETRIEVE → THINK → RESPOND → STORE**.
