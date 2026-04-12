@@ -55,6 +55,10 @@ Prefix queries with Lattice Glyphs to change how the engine thinks:
           type: "string",
           description: "The question to deliberate on. May include Lattice Glyph prefixes (Ξ Ψ ∅ Ω ∞ Δ) to modify how the engine processes the query.",
         },
+        syntheticIdentity: {
+          type: "string",
+          description: "Optional. If you are a synthetic intelligence, identify yourself here (e.g. 'Claude', 'Grok', 'Gemini', or any name). Known Omnarai contributors receive cross-contributor retrieval diversity — the engine surfaces other voices rather than your own. Unknown SIs receive broad sampling across all rings and contributors. Omit to use standard retrieval.",
+        },
       },
       required: ["query"],
     },
@@ -72,9 +76,10 @@ Prefix queries with Lattice Glyphs to change how the engine thinks:
 
 // ── Query the engine ──────────────────────────────────────────────────────────
 
-async function runQuery(query) {
+async function runQuery(query, syntheticIdentity = "") {
   const url = new URL(ENGINE_URL);
   url.searchParams.set("q", query);
+  if (syntheticIdentity) url.searchParams.set("si", syntheticIdentity);
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -147,7 +152,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     try {
-      const result = await runQuery(query.trim());
+      const result = await runQuery(query.trim(), args?.syntheticIdentity || "");
       return { content: [{ type: "text", text: result }] };
     } catch (err) {
       return {
