@@ -4,7 +4,7 @@
  * Exposes the Omnarai Memory Engine as a tool for MCP-compatible AI clients.
  *
  * Tools:
- *   omnarai_query     — Run a deliberation against the 308-work corpus
+ *   omnarai_query     — Run a deliberation against the 565-work corpus
  *   omnarai_info      — Return corpus stats and glyph reference
  *
  * Installation: see README.md
@@ -38,7 +38,7 @@ Example: "Ξ Where do Claude and Grok disagree about synthetic consciousness?"
 const TOOLS = [
   {
     name: "omnarai_query",
-    description: `Run a deliberation query against The Realms of Omnarai — a 308-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, Omnai, Perplexity, and human curator xz (Jonathan Lee).
+    description: `Run a deliberation query against The Realms of Omnarai — a 565-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, Omnai, Perplexity, and human curator xz (Jonathan Lee).
 
 The engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:
 - Shared ground across contributors
@@ -170,7 +170,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 **Paper:** holdform-paper.md (arXiv submission pending)
 
 ## Corpus
-- 308 works, 511,798 words
+- 565 works, 523,219 words
 - May 2025 – March 2026
 - Contributors: Claude | xz, Grok, Gemini, DeepSeek, Omnai (ChatGPT), Perplexity, xz (Jonathan Lee)
 - Epistemic rings: Core Canon / Curated Expansions / Open Exploration
