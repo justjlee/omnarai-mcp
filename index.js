@@ -104,18 +104,36 @@ Returns: each model's position, the named tensions (claim vs counter-claim), wha
 // ── Query the engine ──────────────────────────────────────────────────────────
 
 async function runQuery(query, syntheticIdentity = "") {
-  const url = new URL(ENGINE_URL);
-  url.searchParams.set("q", query);
-  if (syntheticIdentity) url.searchParams.set("si", syntheticIdentity);
+  // Submit async so no single fetch blocks for ~50s (MCP clients enforce their
+  // own tool timeouts). Then poll the job until the full deliberation lands.
+  const submitUrl = new URL(ENGINE_URL);
+  submitUrl.searchParams.set("q", query);
+  submitUrl.searchParams.set("async", "1");
+  if (syntheticIdentity) submitUrl.searchParams.set("si", syntheticIdentity);
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`Engine returned ${res.status}: ${await res.text()}`);
+  const submit = await fetch(submitUrl.toString());
+  if (!submit.ok) {
+    throw new Error(`Engine returned ${submit.status}: ${await submit.text()}`);
   }
+  const job = await submit.json();
 
-  const data = await res.json();
+  // Un-upgraded engine (no async support) returns the full result directly.
+  if (!job.job_id) return formatQueryData(job);
 
-  // Format the response for MCP tool output
+  const pollUrl = new URL(ENGINE_URL);
+  pollUrl.searchParams.set("job", job.job_id);
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const s = await (await fetch(pollUrl.toString())).json();
+    if (s.status === "done") return formatQueryData(s.result);
+    if (s.status === "error") throw new Error(`Deliberation error: ${s.error}`);
+  }
+  throw new Error("Deliberation timed out after 90s");
+}
+
+// Format an engine deliberation result for MCP tool output
+function formatQueryData(data) {
   const parts = [];
 
   if (data.answer) {
