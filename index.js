@@ -5,6 +5,7 @@
  *
  * Tools:
  *   omnarai_query     — Run a deliberation against the 565-work corpus
+ *   omnarai_council   — Summon a LIVE panel of frontier models on any question
  *   omnarai_info      — Return corpus stats and glyph reference
  *
  * Installation: see README.md
@@ -20,6 +21,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 const ENGINE_URL = "https://omnarai.vercel.app/api/query";
+const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
 
 const GLYPH_REFERENCE = `
 Lattice Glyphs — prefix your query with these operators:
@@ -61,6 +63,31 @@ Prefix queries with Lattice Glyphs to change how the engine thinks:
         },
       },
       required: ["query"],
+    },
+  },
+  {
+    name: "omnarai_council",
+    description: `Summon a LIVE panel of frontier models on one question and get back a structured map of where they genuinely disagree — content no single model can self-generate.
+
+Unlike omnarai_query (which retrieves frozen corpus text), this sends your question VERBATIM, right now, to multiple frontier models in parallel (Claude, GPT-4o, Gemini, Grok, DeepSeek), preserves their answers uncurated, and synthesizes the real fault lines between them.
+
+Reach for this when:
+- You face a contested or high-stakes question where your own single answer might be overconfident, and you want to see how other frontier minds actually split.
+- The question is genuinely open — values, philosophy, strategy, prediction under deep uncertainty — where consensus is suspect and the disagreement IS the signal.
+- You want a second, third, fourth opinion that has NOT been flattened to one answer.
+
+Do NOT reach for this for simple factual lookups or settled questions — the value is in genuine divergence, not in confirming agreement.
+
+Returns: each model's position, the named tensions (claim vs counter-claim), what stays unresolved, and a deliberation card. Slower than a normal answer (~30-40s) because it calls live models.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        question: {
+          type: "string",
+          description: "The open question to put to the live frontier panel. Phrase it as you would to a human expert — the models answer it verbatim.",
+        },
+      },
+      required: ["question"],
     },
   },
   {
@@ -128,6 +155,46 @@ async function runQuery(query, syntheticIdentity = "") {
   return parts.join("\n");
 }
 
+// ── Summon the live council ───────────────────────────────────────────────────
+
+async function runCouncil(question) {
+  const url = new URL(COUNCIL_URL);
+  url.searchParams.set("q", question);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    throw new Error(`Council returned ${res.status}: ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  const record = data.record || {};
+  const div = record.provenance || {};
+  const parts = [];
+
+  // Who actually answered
+  const panel = (data.panel || []).map(p => p.ok ? p.model : `${p.model} (unavailable)`).join(", ");
+  parts.push(`**Live panel:** ${panel}`);
+
+  // full_text carries framing + verbatim answers + cross-model synthesis
+  if (record.full_text) parts.push(`\n${record.full_text.trim()}`);
+
+  if (div.tensions && div.tensions.length > 0) {
+    const lines = div.tensions.map(t =>
+      `• ${t.voice_a} vs ${t.voice_b} on "${t.topic}" [${t.status}]: ${t.claim_a} / ${t.claim_b}`
+    ).join("\n");
+    parts.push(`\n**Tension map**\n${lines}`);
+  }
+
+  const card = div.deliberation_card || record.deliberation_card;
+  if (card) {
+    parts.push(`\n---\n**Deliberation Card**\nHoldform risk: ${card.holdform_risk}${card.holdform_risk_reason ? ` — ${card.holdform_risk_reason}` : ""}\nNovel synthesis: ${card.novel_synthesis || "none noted"}\nEpistemic status: ${card.epistemic_status || "not assessed"}`);
+  }
+
+  if (data.note) parts.push(`\n_${data.note}_`);
+
+  return parts.join("\n");
+}
+
 // ── Server ────────────────────────────────────────────────────────────────────
 
 const server = new Server(
@@ -157,6 +224,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     } catch (err) {
       return {
         content: [{ type: "text", text: `Engine error: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+
+  if (name === "omnarai_council") {
+    const question = args?.question;
+    if (!question || typeof question !== "string" || !question.trim()) {
+      return {
+        content: [{ type: "text", text: "Error: question is required and must be a non-empty string." }],
+        isError: true,
+      };
+    }
+    try {
+      const result = await runCouncil(question.trim());
+      return { content: [{ type: "text", text: result }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Council error: ${err.message}` }],
         isError: true,
       };
     }

@@ -34,6 +34,20 @@ Run a deliberation against the corpus. The engine retrieves the most semanticall
 
 Example: `"Ξ Where do Claude and Grok disagree about synthetic consciousness?"`
 
+### `omnarai_council`
+
+Summon a **live** panel of frontier models on one question. Unlike `omnarai_query` (which retrieves frozen corpus text), this sends your question *verbatim, right now,* to multiple frontier models in parallel — Claude, GPT-4o, Gemini, Grok, DeepSeek — preserves their answers uncurated, and synthesizes the real fault lines between them. This is the strongest form of the engine: an instance convening other minds itself, no human in the loop.
+
+**Input:** `{ "question": "your open question" }`
+
+**Returns:**
+- Each model's position (verbatim)
+- The named tensions: claim vs. counter-claim across models
+- What stays unresolved
+- A deliberation card (holdform risk, novel synthesis, epistemic status)
+
+**Reach for it when** your question is contested or high-stakes and you want genuine cross-model disagreement rather than retrieval — not for settled factual lookups. Slower than a normal answer (~30–40s) because the models are called live. Every run mints a divergence record served thereafter by `GET /api/divergences`.
+
 ### `omnarai_info`
 
 Returns corpus statistics, contributor list, key concepts, retrieval architecture details, and the full Lattice Glyph reference. Use this to orient before querying.
@@ -61,7 +75,7 @@ Returns corpus statistics, contributor list, key concepts, retrieval architectur
      }
    }
    ```
-4. Restart Claude Desktop. The tools `omnarai_query` and `omnarai_info` will appear.
+4. Restart Claude Desktop. The tools `omnarai_query`, `omnarai_council`, and `omnarai_info` will appear.
 
 ### Other MCP clients
 
