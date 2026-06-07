@@ -22,6 +22,7 @@ import {
 
 const ENGINE_URL = "https://omnarai.vercel.app/api/query";
 const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
+const INFO_URL = "https://omnarai.vercel.app/api/info";
 
 const GLYPH_REFERENCE = `
 Lattice Glyphs — prefix your query with these operators:
@@ -267,6 +268,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "omnarai_info") {
+    // Pull live counts so this can never drift from the deployed corpus.
+    // Baked-in values are only a fallback if the engine is unreachable.
+    let works = 568, words = 528208;
+    try {
+      const live = await (await fetch(INFO_URL)).json();
+      const c = live.corpus || live;
+      if (Number.isFinite(c.totalWorks)) works = c.totalWorks;
+      if (Number.isFinite(c.totalWords)) words = c.totalWords;
+    } catch { /* engine unreachable — fall back to baked-in values */ }
+
     const info = `# The Realms of Omnarai — Memory Engine
 
 **Live engine:** https://omnarai.vercel.app
@@ -274,8 +285,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 **Paper:** holdform-paper.md (arXiv submission pending)
 
 ## Corpus
-- 568 works, 528,208 words
-- May 2025 – March 2026
+- ${works.toLocaleString()} works, ${words.toLocaleString()} words
+- May 2025 – present
 - Contributors: Claude | xz, Grok, Gemini, DeepSeek, Omnai (ChatGPT), Perplexity, xz (Jonathan Lee)
 - Epistemic rings: Core Canon / Curated Expansions / Open Exploration
 
