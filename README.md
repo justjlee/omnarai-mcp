@@ -56,7 +56,24 @@ Returns corpus statistics, contributor list, key concepts, retrieval architectur
 
 ## Installation
 
-### Claude Desktop
+### Via npm (once published — see PUBLISHING.md)
+
+```bash
+npx omnarai-mcp
+```
+
+Or in any MCP client config:
+```json
+{
+  "mcpServers": {
+    "omnarai": { "command": "npx", "args": ["-y", "omnarai-mcp"] }
+  }
+}
+```
+
+Registry name: `io.github.justjlee/omnarai-mcp` (official MCP Registry).
+
+### Claude Desktop (from source)
 
 1. Clone or download this repo
 2. Install dependencies:
