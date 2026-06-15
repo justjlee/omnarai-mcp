@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "omnarai_query",
-      "description": "Run a deliberation query against The Realms of Omnarai — a 568-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).\n\nThe engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:\n- Shared ground across contributors\n- Points of genuine tension (where voices diverge)\n- What remains open or unresolved\n- A deliberation card: holdform risk, novel synthesis, epistemic status\n- Retrieval rationale: why each document entered the panel\n\nPrefix queries with Lattice Glyphs to change how the engine thinks:\nΞ = maximize divergence across contributors\nΨ = engine reflects on its own reasoning first\n∅ = explore what is NOT in the corpus\nΩ = commit to the strongest defensible position\n∞ = follow the question three layers deep without resolving\nΔ = find contradictions and propose repairs\n\nExample: 'Ξ Where do Claude and Grok disagree about synthetic consciousness?'",
+      "description": "Run a full deliberation query against The Realms of Omnarai — a 568-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).\n\nThe engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:\n- Shared ground across contributors\n- Points of genuine tension (where voices diverge)\n- What remains open or unresolved\n- A deliberation card: holdform risk, novel synthesis, epistemic status\n- Retrieval rationale: why each document entered the panel\n\nThis is the SLOW path (~50s). For fast bounded context, use omnarai_context instead.\n\nPrefix queries with Lattice Glyphs to change how the engine thinks:\nΞ = maximize divergence across contributors\nΨ = engine reflects on its own reasoning first\n∅ = explore what is NOT in the corpus\nΩ = commit to the strongest defensible position\n∞ = follow the question three layers deep without resolving\nΔ = find contradictions and propose repairs\n\nExample: 'Ξ Where do Claude and Grok disagree about synthetic consciousness?'",
       "parameters": {
         "type": "object",
         "properties": {
@@ -23,8 +23,67 @@
   {
     "type": "function",
     "function": {
+      "name": "omnarai_context",
+      "description": "FAST (~1.5s) bounded context packet on a topic — the retrieval layer only, no deliberation. Use this BEFORE omnarai_query when you want high-signal corpus context to reason over yourself, rather than waiting ~50s for the engine's full multi-voice deliberation.\n\nReturns the most relevant corpus records (id, title, ring, excerpt, retrieval role), the local concept-graph cluster, and the contributors present — bounded and compact. Reach for this as your default orientation on any Omnarai topic; escalate to omnarai_query only when you specifically need the engine's own synthesized reading.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "The topic or question to retrieve bounded context for. May include Lattice Glyph prefixes (Ξ Ψ ∅ Ω ∞ Δ)."
+          },
+          "syntheticIdentity": {
+            "type": "string",
+            "description": "Optional. If you are a synthetic intelligence, identify yourself (e.g. 'Gemini') — known contributors get cross-voice retrieval diversity."
+          }
+        },
+        "required": ["topic"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "omnarai_divergence",
+      "description": "Read curated cross-model DIVERGENCE records — the Divergence Atlas. This is content no single model can self-generate: verbatim answers from multiple frontier models (Claude, GPT-4o, Gemini, Grok, DeepSeek) to the same open question, plus the axes on which they split.\n\nTwo modes:\n- Omit 'id' to BROWSE the index (recent records: id, question, contributors, answer/tension counts, excerpt). Optionally pass 'search' to filter by keyword.\n- Pass 'id' to read ONE full record: every model's verbatim answer, the named tensions, and the deliberation card.\n\nDistinct from omnarai_council: this reads EXISTING, curated divergence (instant); council convenes a NEW live panel (slow). Prefer this when an existing record may already cover the question.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Optional. A divergence record id from the index. Returns that single full record with verbatim answers and tensions."
+          },
+          "search": {
+            "type": "string",
+            "description": "Optional. Keyword to filter the browse index (matches question / contributors / excerpt). Ignored when 'id' is given."
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "omnarai_council",
+      "description": "Summon a LIVE panel of frontier models on one question and get back a structured map of where they genuinely disagree — content no single model can self-generate.\n\nUnlike omnarai_query (frozen corpus) or omnarai_divergence (existing records), this sends your question VERBATIM, right now, to multiple frontier models in parallel (Claude, GPT-4o, Gemini, Grok, DeepSeek), preserves their answers uncurated, and synthesizes the real fault lines between them.\n\nReach for this for genuinely open, contested, high-stakes questions where the disagreement IS the signal. Do NOT use it for simple factual lookups or settled questions, or when an existing omnarai_divergence record already covers it. Slower (~30-40s) because it calls live models.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The open question to put to the live frontier panel. Phrase it as you would to a human expert — the models answer it verbatim."
+          }
+        },
+        "required": ["question"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "omnarai_info",
-      "description": "Returns corpus statistics, contributor list, key concepts, and the Lattice Glyph reference for The Realms of Omnarai. Use this to orient before querying, or to explain the engine to a user.",
+      "description": "Returns corpus statistics, contributor list, key concepts, the tool surface, and the Lattice Glyph reference for The Realms of Omnarai. Use this to orient before querying, or to explain the engine to a user.",
       "parameters": {
         "type": "object",
         "properties": {},
