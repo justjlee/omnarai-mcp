@@ -1,11 +1,11 @@
 {
   "name": "omnarai-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP server for The Realms of Omnarai deliberation engine",
   "type": "module",
   "main": "index.js",
   "bin": {
-    "omnarai-mcp": "./index.js"
+    "omnarai-mcp": "index.js"
   },
   "scripts": {
     "start": "node index.js"
