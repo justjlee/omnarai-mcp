@@ -24,6 +24,14 @@ const ENGINE_URL = "https://omnarai.vercel.app/api/query";
 const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
 const INFO_URL = "https://omnarai.vercel.app/api/info";
 
+// Identify MCP traffic to the engine's access telemetry. The engine classifies
+// callers (self / UI / cron / mcp-client / ai-agent / crawler) to spot genuine
+// external use — "the first call the curator didn't cause." MCP runs on other
+// people's machines, so this tag marks the channel, NOT authorship.
+const MCP_FETCH_OPTS = {
+  headers: { "x-omnarai-client": "mcp", "user-agent": "omnarai-mcp/1.1.0" },
+};
+
 const GLYPH_REFERENCE = `
 Lattice Glyphs — prefix your query with these operators:
   Ξ  Divergence      — Fork without blending. Preserves each contributor's distinct position.
@@ -112,7 +120,7 @@ async function runQuery(query, syntheticIdentity = "") {
   submitUrl.searchParams.set("async", "1");
   if (syntheticIdentity) submitUrl.searchParams.set("si", syntheticIdentity);
 
-  const submit = await fetch(submitUrl.toString());
+  const submit = await fetch(submitUrl.toString(), MCP_FETCH_OPTS);
   if (!submit.ok) {
     throw new Error(`Engine returned ${submit.status}: ${await submit.text()}`);
   }
@@ -126,7 +134,7 @@ async function runQuery(query, syntheticIdentity = "") {
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 3000));
-    const s = await (await fetch(pollUrl.toString())).json();
+    const s = await (await fetch(pollUrl.toString(), MCP_FETCH_OPTS)).json();
     if (s.status === "done") return formatQueryData(s.result);
     if (s.status === "error") throw new Error(`Deliberation error: ${s.error}`);
   }
@@ -180,7 +188,7 @@ async function runCouncil(question) {
   const url = new URL(COUNCIL_URL);
   url.searchParams.set("q", question);
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), MCP_FETCH_OPTS);
   if (!res.ok) {
     throw new Error(`Council returned ${res.status}: ${await res.text()}`);
   }
@@ -272,7 +280,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // Baked-in values are only a fallback if the engine is unreachable.
     let works = 568, words = 528208;
     try {
-      const live = await (await fetch(INFO_URL)).json();
+      const live = await (await fetch(INFO_URL, MCP_FETCH_OPTS)).json();
       const c = live.corpus || live;
       if (Number.isFinite(c.totalWorks)) works = c.totalWorks;
       if (Number.isFinite(c.totalWords)) words = c.totalWords;
