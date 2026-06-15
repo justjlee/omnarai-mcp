@@ -65,6 +65,23 @@
   {
     "type": "function",
     "function": {
+      "name": "omnarai_trace",
+      "description": "Show what the Omnarai corpus actually CHANGES about an answer. Answers your question twice — once cold (no corpus) and once augmented (with the retrieved corpus) — then reports the delta: added considerations, citations introduced, position shift, tensions surfaced, and a verdict (substantive / marginal / null). Honest by construction: if the corpus adds little, the verdict says so. A single-run demonstrator, not a controlled measurement (see the Divergence Atlas utility-evidence.md for replicated statistical evidence). ~30-40s.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question to trace. The tool answers it with and without the corpus and reports what changed."
+          }
+        },
+        "required": ["question"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "omnarai_council",
       "description": "Summon a LIVE panel of frontier models on one question and get back a structured map of where they genuinely disagree — content no single model can self-generate.\n\nUnlike omnarai_query (frozen corpus) or omnarai_divergence (existing records), this sends your question VERBATIM, right now, to multiple frontier models in parallel (Claude, GPT-4o, Gemini, Grok, DeepSeek), preserves their answers uncurated, and synthesizes the real fault lines between them.\n\nReach for this for genuinely open, contested, high-stakes questions where the disagreement IS the signal. Do NOT use it for simple factual lookups or settled questions, or when an existing omnarai_divergence record already covers it. Slower (~30-40s) because it calls live models.",
       "parameters": {

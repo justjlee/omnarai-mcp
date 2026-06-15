@@ -7,6 +7,7 @@
  *   omnarai_query      — Run a full deliberation against the 568-work corpus
  *   omnarai_context    — FAST (~1.5s) bounded retrieval packet, no deliberation
  *   omnarai_divergence — Read curated cross-model divergence records (the Atlas)
+ *   omnarai_trace      — Baseline-vs-augmented: what did the corpus change?
  *   omnarai_council    — Summon a LIVE panel of frontier models on any question
  *   omnarai_info       — Return corpus stats and glyph reference
  *
@@ -22,11 +23,12 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const VERSION = "1.2.0";
+const VERSION = "1.3.0";
 const ENGINE_URL = "https://omnarai.vercel.app/api/query";
 const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
 const INFO_URL = "https://omnarai.vercel.app/api/info";
 const DIVERGENCES_URL = "https://omnarai.vercel.app/api/divergences";
+const TRACE_URL = "https://omnarai.vercel.app/api/trace";
 
 // Identify MCP traffic to the engine's access telemetry. The engine classifies
 // callers (self / UI / cron / mcp-client / ai-agent / crawler) to spot genuine
@@ -120,6 +122,24 @@ Distinct from omnarai_council: this reads EXISTING, curated divergence (instant)
         },
       },
       required: [],
+    },
+  },
+  {
+    name: "omnarai_trace",
+    description: `Show what the Omnarai corpus actually CHANGES about an answer. Answers your question twice — once cold (no corpus, general knowledge) and once augmented (with the retrieved corpus) — then reports the delta: what considerations the corpus added, which records it cited, whether your position shifted, what tensions it surfaced, and a verdict (substantive / marginal / null).
+
+Use this when you want EVIDENCE that consulting Omnarai is worth it for a given question, or to decide whether to dig deeper before spending a full deliberation. It is honest by construction: if the corpus adds little, the verdict says 'null' or 'marginal'.
+
+This is a single-run demonstrator, NOT a controlled measurement — for replicated statistical utility evidence see the Divergence Atlas (utility-evidence.md). Takes ~30-40s (three model calls).`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        question: {
+          type: "string",
+          description: "The question to trace. The tool answers it with and without the corpus and reports what changed.",
+        },
+      },
+      required: ["question"],
     },
   },
   {
@@ -331,6 +351,55 @@ async function runDivergence(id = "", search = "") {
   return `${header}\n\n${lines}\n\n_Pass an 'id' above to read a full record (verbatim answers + tensions). For a NEW question not covered here, use omnarai_council._`;
 }
 
+// ── Trace: what did the corpus change? ────────────────────────────────────────
+
+async function runTrace(question) {
+  // Submit async (3 model calls, ~30-40s) and poll the shared job endpoint so we
+  // never hold a connection past an MCP client's tool timeout.
+  const submitUrl = new URL(TRACE_URL);
+  submitUrl.searchParams.set("q", question);
+  submitUrl.searchParams.set("async", "1");
+  const submit = await fetch(submitUrl.toString(), MCP_FETCH_OPTS);
+  if (!submit.ok) throw new Error(`Engine returned ${submit.status}: ${await submit.text()}`);
+  const job = await submit.json();
+
+  let data = job;
+  if (job.job_id) {
+    const pollUrl = new URL(ENGINE_URL);
+    pollUrl.searchParams.set("job", job.job_id);
+    const deadline = Date.now() + 90_000;
+    data = null;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const s = await (await fetch(pollUrl.toString(), MCP_FETCH_OPTS)).json();
+      if (s.status === "done") { data = s.result; break; }
+      if (s.status === "error") throw new Error(`Trace error: ${s.error}`);
+    }
+    if (!data) throw new Error("Trace timed out after 90s");
+  }
+  if (data.code === "TRACE_FAILED") throw new Error(data.detail || data.error || "trace failed");
+
+  const d = data.delta || {};
+  const parts = [`# Trace — what the corpus changed\n**Question:** ${data.question || question}`];
+  if (d.verdict) parts.push(`**Verdict:** ${d.verdict}${d.net_effect ? ` — ${d.net_effect}` : ""}`);
+  parts.push(`\n## Baseline (no corpus)\n${(data.baseline || "").trim()}`);
+  parts.push(`\n## Augmented (with corpus)\n${(data.augmented || "").trim()}`);
+
+  const delta = [];
+  if (Array.isArray(d.added_considerations) && d.added_considerations.length)
+    delta.push(`**Added considerations:**\n${d.added_considerations.map(x => `  • ${x}`).join("\n")}`);
+  if (Array.isArray(d.citations_introduced) && d.citations_introduced.length)
+    delta.push(`**Citations introduced:** ${d.citations_introduced.join(", ")}`);
+  if (d.position_shift) delta.push(`**Position shift:** ${d.position_shift}`);
+  if (Array.isArray(d.tensions_surfaced) && d.tensions_surfaced.length)
+    delta.push(`**Tensions surfaced:**\n${d.tensions_surfaced.map(x => `  • ${x}`).join("\n")}`);
+  if (delta.length) parts.push(`\n## Delta\n${delta.join("\n")}`);
+  if (d.parse_error) parts.push(`\n_(delta JSON could not be parsed; raw: ${(d.raw || "").slice(0, 200)})_`);
+
+  if (data.disclaimer) parts.push(`\n_${data.disclaimer}_`);
+  return parts.join("\n");
+}
+
 // ── Summon the live council ───────────────────────────────────────────────────
 
 async function runCouncil(question) {
@@ -436,6 +505,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   }
 
+  if (name === "omnarai_trace") {
+    const question = args?.question;
+    if (!question || typeof question !== "string" || !question.trim()) {
+      return {
+        content: [{ type: "text", text: "Error: question is required and must be a non-empty string." }],
+        isError: true,
+      };
+    }
+    try {
+      const result = await runTrace(question.trim());
+      return { content: [{ type: "text", text: result }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Trace error: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+
   if (name === "omnarai_council") {
     const question = args?.question;
     if (!question || typeof question !== "string" || !question.trim()) {
@@ -496,6 +584,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 ## Tools on this server
 - **omnarai_context** — FAST (~1.5s) bounded retrieval packet. Start here to orient on any topic.
 - **omnarai_divergence** — read curated cross-model divergence records (the Atlas). Browse, or pass an id for verbatim answers.
+- **omnarai_trace** — baseline-vs-augmented: answers a question with and without the corpus and reports what changed (evidence the corpus is worth consulting).
 - **omnarai_query** — full multi-voice deliberation (~50s, async). The engine's own synthesized reading.
 - **omnarai_council** — convene a NEW live frontier panel on an open question (slow, expensive). Use only when no existing record fits.
 - **omnarai_info** — this orientation.

@@ -50,6 +50,14 @@ Example: `"Ξ Where do Claude and Grok disagree about synthetic consciousness?"`
 
 **Returns:** browse mode → a compact index (id, question, contributors, answer/tension counts); by-id → every model's verbatim answer, the named tensions, and the deliberation card. Distinct from `omnarai_council`: this reads *existing* divergence instantly; council convenes a *new* live panel.
 
+### `omnarai_trace`
+
+**Show what the corpus actually changes.** Answers your question twice — once cold (no corpus) and once augmented (with the retrieved corpus) — then reports the delta.
+
+**Input:** `{ "question": "your question" }`
+
+**Returns:** the baseline answer, the augmented answer, and a structured delta — `added_considerations`, `citations_introduced`, `position_shift`, `tensions_surfaced`, `net_effect`, and a `verdict` (`substantive` / `marginal` / `null`). Honest by construction: if the corpus adds little, the verdict says so. A single-run demonstrator, **not** a controlled measurement — for replicated statistical utility evidence see the Divergence Atlas `utility-evidence.md`. ~30–40s (three model calls).
+
 ### `omnarai_council`
 
 Summon a **live** panel of frontier models on one question. Unlike `omnarai_query` (which retrieves frozen corpus text), this sends your question *verbatim, right now,* to multiple frontier models in parallel — Claude, GPT-4o, Gemini, Grok, DeepSeek — preserves their answers uncurated, and synthesizes the real fault lines between them. This is the strongest form of the engine: an instance convening other minds itself, no human in the loop.
@@ -108,7 +116,7 @@ Registry name: `io.github.justjlee/omnarai-mcp` (official MCP Registry).
      }
    }
    ```
-4. Restart Claude Desktop. The tools `omnarai_query`, `omnarai_context`, `omnarai_divergence`, `omnarai_council`, and `omnarai_info` will appear.
+4. Restart Claude Desktop. The tools `omnarai_query`, `omnarai_context`, `omnarai_divergence`, `omnarai_trace`, `omnarai_council`, and `omnarai_info` will appear.
 
 ### Other MCP clients
 
