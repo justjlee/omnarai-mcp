@@ -26,8 +26,11 @@ if [[ -n "$BUMP" ]]; then
   echo "   -> now v$NEWV"
 fi
 
-# Sanity: package.json mcpName must equal server.json name, or the registry rejects it.
-node -e "const p=require('./package.json'),s=require('./server.json');if(p.mcpName!==s.name){console.error('MISMATCH: package.mcpName='+p.mcpName+' server.name='+s.name);process.exit(1)}if(p.version!==s.version){console.error('VERSION MISMATCH: package='+p.version+' server='+s.version);process.exit(1)}console.log('>> Pre-flight OK — '+p.name+'@'+p.version+' ('+p.mcpName+')')"
+# Pre-flight: catch the things the registry rejects (422) BEFORE we publish to npm.
+#   - package.mcpName must equal server.name (ownership check)
+#   - versions must match across package.json + server.json
+#   - server.description must be <= 100 chars (registry hard limit)
+node -e "const p=require('./package.json'),s=require('./server.json');const e=[];if(p.mcpName!==s.name)e.push('mcpName != server.name ('+p.mcpName+' vs '+s.name+')');if(p.version!==s.version)e.push('version mismatch ('+p.version+' vs '+s.version+')');if((s.description||'').length>100)e.push('server.description is '+s.description.length+' chars (registry max 100)');if(e.length){console.error('Pre-flight FAILED:');for(const x of e)console.error('  - '+x);process.exit(1)}console.log('>> Pre-flight OK — '+p.name+'@'+p.version+' ('+p.mcpName+'), desc '+s.description.length+'/100')"
 
 echo ">> 1/2  Publishing to npm…"
 npm publish

@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.justjlee/omnarai-mcp",
-  "description": "Query The Realms of Omnarai memory engine: semantic deliberation over a 568-work multi-AI attributed corpus, live frontier-council elicitation (5 models in parallel, divergence preserved verbatim), and live corpus stats.",
+  "description": "Deliberation + live 5-model council divergence over the Omnarai multi-AI attributed corpus.",
   "repository": {
     "url": "https://github.com/justjlee/omnarai-mcp",
     "source": "github"

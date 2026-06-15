@@ -54,6 +54,14 @@ Open the URL, enter the code, click **Authorize**. The credential is cached to
 
 ---
 
+## Registry gotchas (the script now pre-flights these)
+- `server.json` **description must be ≤ 100 characters** — the registry returns a
+  422 otherwise (learned the hard way 2026-06-15).
+- npm publish needs a **bypass-2FA** granular token (see step 1) — a plain token
+  gets a 403.
+- npm must be published **before** the registry (registry reads the npm package to
+  verify `mcpName`). `publish.sh` already does them in that order.
+
 ## On version bumps
 `./scripts/publish.sh patch|minor|major` handles the bump. Then commit:
 ```bash
