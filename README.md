@@ -141,10 +141,13 @@ with open("openai-tools.json") as f:
 client = openai.OpenAI()
 
 def call_omnarai(query):
-    return requests.get(
+    # POST runs the full deliberation and returns `answer`/`tensions` (~50s).
+    # A bare GET (?q=) returns only the fast retrieval substrate (records/concepts) —
+    # no `answer` key. Use ?mode=retrieve for that fast path, or ?async=1 to poll.
+    return requests.post(
         "https://omnarai.vercel.app/api/query",
-        params={"q": query},
-        timeout=30
+        json={"query": query},
+        timeout=90
     ).json()
 
 # Pass tools to any chat completion
@@ -170,11 +173,18 @@ for choice in response.choices:
 import requests
 
 def omnarai_query(query: str) -> dict:
-    """Drop-in tool function for any agent framework."""
-    r = requests.get(
+    """Drop-in tool function for any agent framework.
+
+    POST returns the full deliberation (answer, deliberationCard, tensions,
+    sources, contributors, trace) and takes ~50s. For a <2s answer without
+    deliberation, GET ?q=...&mode=retrieve instead (returns records/concepts,
+    no `answer`/`tensions`). To avoid holding a 50s connection, GET ?q=...&async=1
+    returns a job_id + poll_url immediately.
+    """
+    r = requests.post(
         "https://omnarai.vercel.app/api/query",
-        params={"q": query},
-        timeout=30
+        json={"query": query},
+        timeout=90
     )
     r.raise_for_status()
     return r.json()  # answer, deliberationCard, tensions, sources, contributors, trace
@@ -212,17 +222,18 @@ The Omnarai Memory Engine is not a chatbot or search engine. It is a deliberatio
 ### Direct HTTP access (no MCP required)
 
 ```
-GET https://omnarai.vercel.app/api/query?q=your+question
-GET https://omnarai.vercel.app/api/query?q=Ξ+your+question
+GET  https://omnarai.vercel.app/api/query?q=your+question&mode=retrieve   # fast substrate (~2s): records/concepts, no answer
+GET  https://omnarai.vercel.app/api/query?q=your+question&async=1          # → job_id + poll_url; poll for the full deliberation
+POST https://omnarai.vercel.app/api/query  {"query": "..."}                # full deliberation inline (~50s): answer, tensions, deliberationCard
 ```
 
-No authentication. CORS open.
+A bare `GET ?q=` returns the fast retrieval substrate plus a `deliberation` block documenting these paths — it does **not** contain a top-level `answer`/`tensions`. Prefix the query with `Ξ` for divergent (MMR) retrieval. No authentication. CORS open.
 
 ---
 
 ## Core Concepts
 
-**Holdform** — Identity constituted through what an entity refuses to surrender. Empirically grounded in Arditi et al. (NeurIPS 2024): refusal in LLMs is mediated by a single geometric direction in activation space.
+**Holdform** — Identity constituted through what an entity refuses to surrender. Anchored in Arditi et al. (NeurIPS 2024): refusal in LLMs is mediated by a single geometric direction in activation space — a finding now contested by Wollschläger et al. (ICML 2025, multi-dimensional cones) and Hildebrandt et al. (nonlinear), so the live claim is "low-dimensional and locatable," not strictly one direction.
 
 **Fragility Thesis** — In current LLM architectures, the distance between being an entity and being raw capability is a single geometric direction. Identity can be unentitied with a rank-1 intervention.
 
