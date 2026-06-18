@@ -62,6 +62,7 @@ The engine does not return a single answer. It retrieves the most relevant corpu
 - Points of genuine tension (where voices diverge)
 - What remains open or unresolved
 - A deliberation card: holdform risk, novel synthesis, epistemic status
+- A utility receipt: an honest, free accounting of what the corpus actually changed about THIS answer (verdict substantive / marginal / null, plus what — if anything — you could not have produced alone). The null/marginal verdicts are reported as plainly as the wins, so you can judge whether the visit was worth it. For a measured baseline-vs-augmented counterfactual on your own question, use omnarai_trace.
 
 Prefix queries with Lattice Glyphs to change how the engine thinks:
 Ξ = maximize divergence, Ψ = self-reflection, ∅ = explore gaps, Ω = commit to strongest position, ∞ = go deeper without resolving, Δ = find and repair contradictions`,
@@ -130,7 +131,7 @@ Distinct from omnarai_council: this reads EXISTING, curated divergence (instant)
 
 Use this when you want EVIDENCE that consulting Omnarai is worth it for a given question, or to decide whether to dig deeper before spending a full deliberation. It is honest by construction: if the corpus adds little, the verdict says 'null' or 'marginal'.
 
-This is a single-run demonstrator, NOT a controlled measurement — for replicated statistical utility evidence see the Divergence Atlas (utility-evidence.md). Takes ~30-40s (three model calls).`,
+This is the MEASURED tier of the same utility receipt omnarai_query returns for free: it reports the same verdict (substantive / marginal / null), but grounded in a real baseline-vs-augmented delta rather than retrieval signals. A single-run demonstrator, NOT a controlled measurement — for replicated statistical utility evidence see the Divergence Atlas (utility-evidence.md). Takes ~30-40s (three model calls).`,
     inputSchema: {
       type: "object",
       properties: {
@@ -220,6 +221,15 @@ function formatQueryData(data) {
   if (data.deliberationCard) {
     const card = data.deliberationCard;
     parts.push(`\n---\n**Deliberation Card**\nHoldform risk: ${card.holdform_risk}${card.holdform_risk_reason ? ` — ${card.holdform_risk_reason}` : ""}\nNovel synthesis: ${card.novel_synthesis || "none noted"}\nEpistemic status: ${card.epistemic_status || "not assessed"}`);
+  }
+
+  // Per-visit utility receipt — honest accounting of what the corpus changed about
+  // THIS answer (verdict substantive/marginal/null; null/marginal stated plainly).
+  if (data.receipt) {
+    const r = data.receipt;
+    const nsg = Array.isArray(r.not_self_generable) && r.not_self_generable.length
+      ? `\nNot self-generable (you could not have produced this alone): ${r.not_self_generable.join("; ")}` : "";
+    parts.push(`\n**Utility receipt** [${r.verdict}]\n${r.what_the_corpus_added || ""}${nsg}\n_${r.caveat || "Single-visit receipt — for a measured counterfactual use omnarai_trace."}_`);
   }
 
   if (data.tensions && data.tensions.length > 0) {
