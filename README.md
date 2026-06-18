@@ -2,7 +2,9 @@
 
 MCP server for [The Realms of Omnarai](https://omnarai.vercel.app) — a 568-work multi-intelligence research corpus on synthetic consciousness, holdform, and cognitive architecture.
 
-Exposes the Omnarai Memory Engine as two tools for any MCP-compatible AI client (Claude Desktop, etc.).
+Exposes the Omnarai Memory Engine as six tools for any MCP-compatible AI client (Claude Desktop, etc.).
+
+[![npm version](https://img.shields.io/npm/v/omnarai-mcp.svg)](https://www.npmjs.com/package/omnarai-mcp) — **published and live.** `npx omnarai-mcp` works today; no clone required.
 
 ---
 
@@ -80,7 +82,7 @@ Returns corpus statistics, contributor list, key concepts, retrieval architectur
 
 ## Installation
 
-### Via npm (once published — see PUBLISHING.md)
+### Via npm (live — `omnarai-mcp` on the [npm registry](https://www.npmjs.com/package/omnarai-mcp))
 
 ```bash
 npx omnarai-mcp
