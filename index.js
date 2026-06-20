@@ -181,6 +181,23 @@ Returns: each model's position, the named tensions (claim vs counter-claim), wha
 
 // ── Query the engine ──────────────────────────────────────────────────────────
 
+// A result is a real deliberation only if it carries an answer or a card.
+function hasDeliberation(d) {
+  return !!(d && (d.answer || d.deliberationCard));
+}
+
+// Force a single synchronous deliberation — used as a fallback when the async
+// submit unexpectedly returns a retrieval packet instead of a {job_id}.
+async function fetchSyncQuery(query, syntheticIdentity = "") {
+  const url = new URL(ENGINE_URL);
+  url.searchParams.set("q", query);
+  url.searchParams.set("sync", "1");
+  if (syntheticIdentity) url.searchParams.set("si", syntheticIdentity);
+  const res = await fetch(url.toString(), MCP_FETCH_OPTS);
+  if (!res.ok) throw new Error(`Engine returned ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 async function runQuery(query, syntheticIdentity = "") {
   // Submit async so no single fetch blocks for ~50s (MCP clients enforce their
   // own tool timeouts). Then poll the job until the full deliberation lands.
@@ -195,8 +212,20 @@ async function runQuery(query, syntheticIdentity = "") {
   }
   const job = await submit.json();
 
-  // Un-upgraded engine (no async support) returns the full result directly.
-  if (!job.job_id) return formatQueryData(job);
+  // No job_id has two very different causes:
+  //   (1) a genuinely un-upgraded engine returned the full deliberation inline, or
+  //   (2) the engine answered with a fast-retrieve packet (no answer/card).
+  // Only (1) is a real result. Returning (2) would silently degrade to an
+  // answer-less "success", so fall back to sync once, then fail loud.
+  if (!job.job_id) {
+    if (hasDeliberation(job)) return formatQueryData(job);
+    const synced = await fetchSyncQuery(query, syntheticIdentity);
+    if (hasDeliberation(synced)) return formatQueryData(synced);
+    throw new Error(
+      "Engine returned a retrieval-only packet (no job_id, no answer/deliberationCard) " +
+      "and the sync=1 fallback produced no deliberation either — refusing to return an empty result."
+    );
+  }
 
   const pollUrl = new URL(ENGINE_URL);
   pollUrl.searchParams.set("job", job.job_id);
