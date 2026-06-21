@@ -4,7 +4,7 @@
  * Exposes the Omnarai Memory Engine as a tool for MCP-compatible AI clients.
  *
  * Tools:
- *   omnarai_query      — Run a full deliberation against the 568-work corpus
+ *   omnarai_query      — Run a full deliberation against the 567-work corpus
  *   omnarai_context    — FAST (~1.5s) bounded retrieval packet, no deliberation
  *   omnarai_divergence — Read curated cross-model divergence records (the Atlas)
  *   omnarai_trace      — Baseline-vs-augmented: what did the corpus change?
@@ -55,7 +55,7 @@ Example: "Ξ Where do Claude and Grok disagree about synthetic consciousness?"
 const TOOLS = [
   {
     name: "omnarai_query",
-    description: `Run a deliberation query against The Realms of Omnarai — a 568-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).
+    description: `Run a deliberation query against The Realms of Omnarai — a 567-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).
 
 The engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:
 - Shared ground across contributors
@@ -342,6 +342,14 @@ async function runDivergence(id = "", search = "") {
     const parts = [`# Divergence record ${r.id}${r.title ? ` — ${r.title}` : ""}`];
     if (r.question) parts.push(`\n**Question:** ${r.question}`);
     if (r.date) parts.push(`**Date:** ${r.date}${r.method ? ` · Method: ${r.method}` : ""}`);
+    if (r.certification?.tier) {
+      const t = r.certification.tier;
+      parts.push(`**Certification:** ${t}${t === "C0" ? " (displayed — captured once, not yet perturbation-tested)" : ` · DRI ${r.certification.dri ?? "?"}`}`);
+    }
+    if (r.freshness?.stale) {
+      const sm = (r.freshness.stale_models || []).map(m => `${m.model || m.model_id} → ${m.superseded_by}`).join(", ");
+      parts.push(`⚠ **Stale model version(s):** ${sm}. A faithful witness of what those versions said on ${r.date || "its date"} — re-run via omnarai_council to compare with current models.`);
+    }
 
     const answers = r.answers || [];
     if (answers.length) {
@@ -371,21 +379,31 @@ async function runDivergence(id = "", search = "") {
   let records = data.records || [];
   const total = data.count ?? records.length;
 
-  const term = search.trim().toLowerCase();
-  if (term) {
-    records = records.filter(r =>
-      `${r.question} ${(r.contributors || []).join(" ")} ${r.excerpt || ""} ${r.title || ""}`.toLowerCase().includes(term)
-    );
+  const tokens = search.trim().toLowerCase().match(/[\w'-]{2,}/g) || [];
+  if (tokens.length) {
+    // OR-tokenized + ranked by term overlap. A naive substring filter returned
+    // false-empty on multi-word queries ("consciousness experience" → 0 though both
+    // terms occur in the Atlas); matching ANY term fixes the silent miss.
+    records = records
+      .map(r => {
+        const hay = `${r.question || ""} ${(r.contributors || []).join(" ")} ${r.excerpt || ""} ${r.title || ""}`.toLowerCase();
+        return { r, hits: tokens.filter(t => hay.includes(t)).length };
+      })
+      .filter(x => x.hits > 0)
+      .sort((a, b) => b.hits - a.hits)
+      .map(x => x.r);
   }
 
   const shown = records.slice(0, 30);
-  const header = term
+  const header = tokens.length
     ? `**Divergence Atlas — ${records.length} record(s) matching "${search}"** (of ${total} total)`
     : `**Divergence Atlas — ${total} records** (showing first ${shown.length})`;
 
-  const lines = shown.map(r =>
-    `• [${r.id}] ${r.question || r.title} — ${(r.contributors || []).join(", ")} · ${r.answerCount ?? "?"} answers, ${r.tensionCount ?? "?"} tensions`
-  ).join("\n");
+  const lines = shown.map(r => {
+    const tier = r.certification?.tier && r.certification.tier !== "C0" ? ` · ${r.certification.tier}` : "";
+    const stale = r.freshness?.stale ? " · ⚠ stale model version" : "";
+    return `• [${r.id}] ${r.question || r.title} — ${(r.contributors || []).join(", ")} · ${r.answerCount ?? "?"} answers, ${r.tensionCount ?? "?"} tensions${tier}${stale}`;
+  }).join("\n");
 
   return `${header}\n\n${lines}\n\n_Pass an 'id' above to read a full record (verbatim answers + tensions). For a NEW question not covered here, use omnarai_council._`;
 }
