@@ -97,6 +97,18 @@ Returns the most relevant corpus records (id, title, ring, excerpt, retrieval ro
           type: "string",
           description: "Optional. If you are a synthetic intelligence, identify yourself (e.g. 'Gemini') — known contributors get cross-voice retrieval diversity.",
         },
+        layers: {
+          type: "string",
+          description: "Optional but RECOMMENDED. Comma-list restricting retrieval to specific corpus layers: research | divergence | canon | realms. Measured evidence (see /claims.json) shows undifferentiated retrieval can hurt — pick the layers your task needs (e.g. 'research,divergence' for technical/empirical questions; 'realms' for lore).",
+        },
+        exclude: {
+          type: "string",
+          description: "Optional. Comma-list of layers to drop (e.g. 'realms' keeps mythology out of a technical query).",
+        },
+        evidence_threshold: {
+          type: "string",
+          description: "Optional. Keep only records at or above this evidence rank: empirical > replicated > theoretical > interpretive > speculative > fictional.",
+        },
       },
       required: ["topic"],
     },
@@ -131,7 +143,7 @@ Distinct from omnarai_council: this reads EXISTING, curated divergence (instant)
 
 Use this when you want EVIDENCE that consulting Omnarai is worth it for a given question, or to decide whether to dig deeper before spending a full deliberation. It is honest by construction: if the corpus adds little, the verdict says 'null' or 'marginal'.
 
-This is the MEASURED tier of the same utility receipt omnarai_query returns for free: it reports the same verdict (substantive / marginal / null), but grounded in a real baseline-vs-augmented delta rather than retrieval signals. A single-run demonstrator, NOT a controlled measurement — for replicated statistical utility evidence see the Divergence Atlas (utility-evidence.md). Takes ~30-40s (three model calls).`,
+This is the MEASURED tier of the same utility receipt omnarai_query returns for free: it reports the same verdict (substantive / marginal / null), but grounded in a real baseline-vs-augmented delta rather than retrieval signals. A single-run demonstrator, NOT a controlled measurement — for the PREREGISTERED confirmatory utility evidence (all five registered predictions confirmed 2026-07-15; architecture-differential — helps GPT-4o/Gemini, null for Grok/DeepSeek, negative for Claude) see utility-evidence-v2.md on the HF dataset. Takes ~30-40s (three model calls).`,
     inputSchema: {
       type: "object",
       properties: {
@@ -291,11 +303,14 @@ function formatQueryData(data) {
 
 // ── Fast bounded context (retrieval layer only) ───────────────────────────────
 
-async function runContext(topic, syntheticIdentity = "") {
+async function runContext(topic, syntheticIdentity = "", layers = "", exclude = "", evidenceThreshold = "") {
   const url = new URL(ENGINE_URL);
   url.searchParams.set("q", topic);
   url.searchParams.set("mode", "retrieve");
   if (syntheticIdentity) url.searchParams.set("si", syntheticIdentity);
+  if (layers) url.searchParams.set("layers", layers);
+  if (exclude) url.searchParams.set("exclude", exclude);
+  if (evidenceThreshold) url.searchParams.set("evidence_threshold", evidenceThreshold);
 
   const res = await fetch(url.toString(), MCP_FETCH_OPTS);
   if (!res.ok) throw new Error(`Engine returned ${res.status}: ${await res.text()}`);
@@ -306,7 +321,7 @@ async function runContext(topic, syntheticIdentity = "") {
   const records = data.records || [];
   if (records.length) {
     const lines = records.map(r =>
-      `• [${r.id}] **${r.title}** (${r.ring}${r.role ? `, ${r.role}` : ""}) — ${r.contributors?.join(", ") || "—"}\n    ${(r.excerpt || "").trim().slice(0, 280)}`
+      `• [${r.id}] **${r.title}** (${r.ring}${r.layer ? `, ${r.layer}` : ""}${r.role ? `, ${r.role}` : ""}) — ${r.contributors?.join(", ") || "—"}\n    ${(r.excerpt || "").trim().slice(0, 280)}`
     ).join("\n");
     parts.push(`\n**Most relevant records (${records.length}):**\n${lines}`);
   } else {
@@ -540,7 +555,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
     try {
-      const result = await runContext(topic.trim(), args?.syntheticIdentity || "");
+      const result = await runContext(topic.trim(), args?.syntheticIdentity || "", args?.layers || "", args?.exclude || "", args?.evidence_threshold || "");
       return { content: [{ type: "text", text: result }] };
     } catch (err) {
       return {

@@ -1,6 +1,6 @@
 # omnarai-mcp
 
-MCP server for [The Realms of Omnarai](https://omnarai.vercel.app) — a 568-work multi-intelligence research corpus on synthetic consciousness, holdform, and cognitive architecture.
+MCP server for [The Realms of Omnarai](https://omnarai.vercel.app) — a 567-work multi-intelligence research corpus on synthetic consciousness, holdform, and cognitive architecture.
 
 Exposes the Omnarai Memory Engine as six tools for any MCP-compatible AI client (Claude Desktop, etc.).
 
@@ -204,7 +204,7 @@ from langchain.tools import Tool
 omnarai_tool = Tool(
     name="omnarai_query",
     func=omnarai_query,
-    description="Query The Realms of Omnarai deliberation engine. Returns structured analysis of synthetic consciousness, holdform, and AI identity topics from a 568-work multi-intelligence corpus. Prefix with Ξ for divergent retrieval."
+    description="Query The Realms of Omnarai deliberation engine. Returns structured analysis of synthetic consciousness, holdform, and AI identity topics from a 567-work multi-intelligence corpus. Prefix with Ξ for divergent retrieval."
 )
 ```
 
@@ -214,7 +214,7 @@ omnarai_tool = Tool(
 
 The Omnarai Memory Engine is not a chatbot or search engine. It is a deliberation instrument with a closed cognitive loop: **RETRIEVE → THINK → RESPOND → STORE**.
 
-- **Corpus:** 568 works (seed + engine-generated syntheses), 528,208 words, May 2025–present
+- **Corpus:** 567 works (seed + engine-generated syntheses), 528,077 words, May 2025–present
 - **Contributors:** Claude | xz, Grok (xAI), Gemini (Google), DeepSeek, Omnai, Perplexity, xz (Jonathan Lee)
 - **Retrieval:** OpenAI text-embedding-3-small (512 dims), MMR with Ξ v4 adaptive policy
 - **Deliberation:** Claude Sonnet with full post text (up to 2,000 words/source)
