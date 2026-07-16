@@ -49,8 +49,34 @@ adaptation_notes:
     payload inside the markdown result, matching the server's text-content convention.
 
 delivery:
-  status: pending
-  commit_or_pr: null
-  changed_files: []
-  verification_results: []
-  known_limits: []
+  status: shipped
+  commit_or_pr: "d0c1094 (local main, omnarai-mcp v1.5.0)"
+  changed_files:
+    - "inquiry.js"
+    - "index.js"
+    - "test/inquiry-brief.test.js"
+    - "README.md"
+    - "openai-tools.json"
+    - "package.json"
+    - "server.json"
+    - "proposals/OMN-P-042.yaml"
+  verification_results:
+    - "node --check index.js / inquiry.js — passed"
+    - "npm test (node --test) — 13/13 passed, all upstream responses mocked"
+    - "MCP stdio discovery — omnarai_inquiry_brief advertised among 7 tools"
+    - "Live smoke test (03-acceptance-test-plan.md draft, stakes=high, focus=evidence,
+       x-omnarai-self header) — 2026-07-16: 8 sources, 4 attributed tensions from
+       OMN-D1780429830432, honest missing-evidence gaps, falsifiable questions,
+       concrete next move; trace mode=retrieve, both evidence layers used;
+       'genuine divergence' phrase-gate held (no non-C3 record labeled with it)"
+    - "Formatter / type checker / linter — not present in this repo (plain-JS,
+       zero-tooling by convention); node --check used as the syntax gate"
+  known_limits:
+    - "Default-path composition is deterministic: sharper questions and the next
+       move are heuristic templates keyed to retrieved evidence, for the calling
+       model to sharpen; generative synthesis only via include_deliberation=true."
+    - "Tensions come only from matched Divergence Atlas records (max 2 records,
+       4 tensions); retrieval records alone never mint a tension."
+    - "Live grown OMN-D records may omit certification; the brief then omits the
+       tier rather than inventing one."
+    - "npm publish (v1.5.0) not yet run — local commit only."
