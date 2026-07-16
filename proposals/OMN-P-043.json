@@ -94,7 +94,7 @@
     "status": "implemented",
     "repository": "justjlee/omnarai-mcp",
     "code_references": [
-      "local main (Phase 1 commit, 2026-07-16; hash recorded in a follow-up ledger commit)"
+      "bfbf024 (local main, 2026-07-16)"
     ],
     "work_items": [
       "Schema/store/state/handoff/tools modules under lib/",
