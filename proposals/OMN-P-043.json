@@ -5,7 +5,7 @@
   "status": "shipped",
   "revision": 2,
   "created_at": "2026-07-16T16:55:00Z",
-  "updated_at": "2026-07-16T17:46:30.291Z",
+  "updated_at": "2026-07-16T18:06:33.243Z",
   "idea": {
     "problem": "AI-assisted implementation loses the evidence, uncertainty, dissent, and human authorization behind code changes. Nothing connects a shipped change back to the reasoning and the approval boundary that authorized it.",
     "proposed_direction": "Add a repository-local, versioned Decision Ledger and a guarded Claude Code handoff generator to the Omnarai MCP server, unified with the repository's existing proposals/ convention (OMN-P numbering).",
@@ -189,6 +189,13 @@
       "actor": "Jonathan Lee (justjlee)",
       "revision": 2,
       "note": "Release authorized via Claude Code chat (push + publish). npm publish verified live at 1.6.0; MCP Registry publish blocked on expired JWT, to be re-run by the maintainer after mcp-publisher login."
+    },
+    {
+      "type": "note",
+      "at": "2026-07-16T18:06:33.243Z",
+      "actor": "Jonathan Lee (justjlee) + claude-fable-5",
+      "revision": 2,
+      "note": "MCP Registry publish completed 2026-07-16T18:05Z: io.github.justjlee/omnarai-mcp 1.6.0 is latest, npm package + streamable-http remote both listed. The known limit about the registry lagging at 1.5.0 is resolved (maintainer authorized via GitHub device flow; publish run from this session)."
     }
   ]
 }
