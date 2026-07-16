@@ -2,10 +2,10 @@
   "schema_version": 1,
   "id": "OMN-P-043",
   "title": "Phase 1 — repository-local Decision Ledger foundation",
-  "status": "verified",
+  "status": "shipped",
   "revision": 2,
   "created_at": "2026-07-16T16:55:00Z",
-  "updated_at": "2026-07-16T17:38:13.571Z",
+  "updated_at": "2026-07-16T17:46:30.291Z",
   "idea": {
     "problem": "AI-assisted implementation loses the evidence, uncertainty, dissent, and human authorization behind code changes. Nothing connects a shipped change back to the reasoning and the approval boundary that authorized it.",
     "proposed_direction": "Add a repository-local, versioned Decision Ledger and a guarded Claude Code handoff generator to the Omnarai MCP server, unified with the repository's existing proposals/ convention (OMN-P numbering).",
@@ -130,14 +130,15 @@
     "known_limits": [
       "Approval is a Git-tracked attestation, not authenticated identity.",
       "The ledger lives in an iCloud-synced repository; sync conflicts can produce duplicate record files that Git review must catch.",
-      "State transitions exist as tested library functions but are deliberately not exposed as MCP tools in this phase."
+      "State transitions exist as tested library functions but are deliberately not exposed as MCP tools in this phase.",
+      "MCP Registry re-publish of 1.6.0 pending mcp-publisher re-auth (JWT expired — known recurring friction); npm is the delivery of record."
     ]
   },
   "delivery": {
-    "status": "not_shipped",
-    "shipped_by": null,
-    "shipped_at": null,
-    "commit_or_pr": null
+    "status": "shipped",
+    "shipped_by": "Jonathan Lee (justjlee)",
+    "shipped_at": "2026-07-16T17:46:30.291Z",
+    "commit_or_pr": "bfbf024 + 2bc48f0 (github.com/justjlee/omnarai-mcp main); npm omnarai-mcp@1.6.0"
   },
   "events": [
     {
@@ -181,6 +182,13 @@
       "actor": "claude-fable-5 (Claude Code)",
       "revision": 2,
       "note": "All Phase 1 acceptance checks green. Shipped-transition deliberately left to the human maintainer."
+    },
+    {
+      "type": "status:shipped",
+      "at": "2026-07-16T17:46:30.291Z",
+      "actor": "Jonathan Lee (justjlee)",
+      "revision": 2,
+      "note": "Release authorized via Claude Code chat (push + publish). npm publish verified live at 1.6.0; MCP Registry publish blocked on expired JWT, to be re-run by the maintainer after mcp-publisher login."
     }
   ]
 }
