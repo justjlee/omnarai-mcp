@@ -79,4 +79,6 @@ delivery:
        4 tensions); retrieval records alone never mint a tension."
     - "Live grown OMN-D records may omit certification; the brief then omits the
        tier rather than inventing one."
-    - "npm publish (v1.5.0) not yet run — local commit only."
+    - "Published to npm 2026-07-16 (omnarai-mcp@1.5.0, includes structuredContent
+       on all 7 tools; commits d0c1094 + fa967a0, pushed to GitHub). MCP Registry
+       re-publish pending a fresh mcp-publisher GitHub login (JWT expired)."
