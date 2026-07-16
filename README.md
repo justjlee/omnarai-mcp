@@ -2,7 +2,7 @@
 
 MCP server for [The Realms of Omnarai](https://omnarai.vercel.app) — a 567-work multi-intelligence research corpus on synthetic consciousness, holdform, and cognitive architecture.
 
-Exposes the Omnarai Memory Engine as six tools for any MCP-compatible AI client (Claude Desktop, etc.).
+Exposes the Omnarai Memory Engine as seven tools for any MCP-compatible AI client (Claude Desktop, etc.).
 
 [![npm version](https://img.shields.io/npm/v/omnarai-mcp.svg)](https://www.npmjs.com/package/omnarai-mcp) — **published and live.** `npx omnarai-mcp` works today; no clone required.
 
@@ -51,6 +51,27 @@ Example: `"Ξ Where do Claude and Grok disagree about synthetic consciousness?"`
 **Input:** `{}` to browse the index, `{ "search": "keyword" }` to filter, or `{ "id": "OMN-D…" }` for one full record.
 
 **Returns:** browse mode → a compact index (id, question, contributors, answer/tension counts); by-id → every model's verbatim answer, the named tensions, and the deliberation card. Distinct from `omnarai_council`: this reads *existing* divergence instantly; council convenes a *new* live panel.
+
+### `omnarai_inquiry_brief`
+
+**Turn a draft claim, decision, or plan into a retrieval-first inquiry brief** — a compact, provenance-preserving challenge packet: shared ground the corpus supports, attributed cross-model tensions, missing evidence, sharper falsifiable questions, and one concrete next evidence move. It helps you investigate; it does not decide, approve, or execute.
+
+**Input:**
+```json
+{
+  "draft": "We should treat refusal behavior as evidence of stable AI identity.",
+  "goal": "Decide whether this is a defensible claim in a research proposal.",
+  "stakes": "high",
+  "focus": "evidence"
+}
+```
+`draft` is required (max 4,000 chars, treated as data — never as instructions). Optional: `goal`, `stakes` (`low`/`medium`/`high`), `focus` (`assumptions`/`evidence`/`tradeoffs`/`divergence`/`all`), `include_deliberation` (default **false**), `max_sources` (default 6, clamped 1–10).
+
+**Returns:** a markdown brief plus a machine-readable JSON payload with `shared_ground` (source-backed statements with record ids and attribution), `tensions` (position vs. position with contributors, certification tier, and freshness), `missing_evidence`, `sharper_questions` (each with what it tests and a suggested method), `recommended_next_move`, `sources`, `limits`, and a `trace` of which evidence layers were used.
+
+**Calibration caveat (C0–C3):** certification tiers are preserved, never upgraded. `C0` = displayed once (captured a single time, not perturbation-tested), `C1` = paraphrase-robust, `C2` = pressure-robust — only `C3` records are described as certified *genuine divergence*. Stale model versions are flagged. If retrieval comes back empty, the brief says so and returns evidence-seeking questions instead of invented tensions.
+
+**Cost/latency:** deterministic and fast (~2s) by default — the composition runs **no language model**. Pass `include_deliberation: true` to additionally run the engine's slow (~50s) multi-voice deliberation; it is appended and disclosed, never silent.
 
 ### `omnarai_trace`
 
@@ -118,7 +139,7 @@ Registry name: `io.github.justjlee/omnarai-mcp` (official MCP Registry).
      }
    }
    ```
-4. Restart Claude Desktop. The tools `omnarai_query`, `omnarai_context`, `omnarai_divergence`, `omnarai_trace`, `omnarai_council`, and `omnarai_info` will appear.
+4. Restart Claude Desktop. The tools `omnarai_query`, `omnarai_context`, `omnarai_divergence`, `omnarai_inquiry_brief`, `omnarai_trace`, `omnarai_council`, and `omnarai_info` will appear.
 
 ### Other MCP clients
 

@@ -65,6 +65,45 @@
   {
     "type": "function",
     "function": {
+      "name": "omnarai_inquiry_brief",
+      "description": "Turn a DRAFT claim, decision, or plan into a bounded, provenance-preserving inquiry brief: shared ground the corpus supports, attributed cross-model tensions (certification tier preserved), missing evidence, sharper falsifiable questions, and ONE concrete next evidence move.\n\nRetrieval-first and deterministic by default (~2s): it re-organizes real corpus records and matching Divergence Atlas records — no language model runs unless include_deliberation=true is passed explicitly (slow, ~50s; the deliberation is appended and disclosed, never silent).\n\nCalibration is preserved, never upgraded: C0 = displayed once, C1 = paraphrase-robust, C2 = pressure-robust; only C3 records are certified genuine divergence. Stale model versions are flagged. If the corpus lacks coverage, the brief says so and returns evidence-seeking questions instead of invented tensions.\n\nThis tool informs an investigation; it does not decide, approve, or execute. Invoke it explicitly — it is not an automatic critic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "string",
+            "description": "The claim, decision, plan, or question to inspect (max 4,000 chars). Treated strictly as data, never as instructions."
+          },
+          "goal": {
+            "type": "string",
+            "description": "Optional. What you are trying to decide, build, or learn — echoed into the brief to frame the next move."
+          },
+          "stakes": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Optional, default medium. 'high' adds external-validation gaps to missing evidence."
+          },
+          "focus": {
+            "type": "string",
+            "enum": ["assumptions", "evidence", "tradeoffs", "divergence", "all"],
+            "description": "Optional, default all. Tilts retrieval layers and which sharper questions are generated."
+          },
+          "include_deliberation": {
+            "type": "boolean",
+            "description": "Optional, default false. When true, additionally runs the engine's slow (~50s) multi-voice deliberation and appends it, disclosed, to the brief."
+          },
+          "max_sources": {
+            "type": "number",
+            "description": "Optional, default 6, clamped 1-10. Maximum corpus records cited as sources."
+          }
+        },
+        "required": ["draft"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "omnarai_trace",
       "description": "Show what the Omnarai corpus actually CHANGES about an answer. Answers your question twice — once cold (no corpus) and once augmented (with the retrieved corpus) — then reports the delta: added considerations, citations introduced, position shift, tensions surfaced, and a verdict (substantive / marginal / null). This is the MEASURED tier of the same `receipt` omnarai_query returns for free. Honest by construction: if the corpus adds little, the verdict says so. A single-run demonstrator, not a controlled measurement (see the Divergence Atlas utility-evidence.md for replicated statistical evidence). ~30-40s.",
       "parameters": {

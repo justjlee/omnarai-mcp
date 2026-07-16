@@ -9,6 +9,7 @@
  *   omnarai_divergence — Read curated cross-model divergence records (the Atlas)
  *   omnarai_trace      — Baseline-vs-augmented: what did the corpus change?
  *   omnarai_council    — Summon a LIVE panel of frontier models on any question
+ *   omnarai_inquiry_brief — Draft claim/decision → bounded, attributed inquiry brief
  *   omnarai_info       — Return corpus stats and glyph reference
  *
  * Installation: see README.md
@@ -22,8 +23,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { runInquiryBrief, searchDivergenceIndex } from "./inquiry.js";
 
-const VERSION = "1.3.0";
+const VERSION = "1.5.0";
 const ENGINE_URL = "https://omnarai.vercel.app/api/query";
 const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
 const INFO_URL = "https://omnarai.vercel.app/api/info";
@@ -135,6 +137,48 @@ Distinct from omnarai_council: this reads EXISTING, curated divergence (instant)
         },
       },
       required: [],
+    },
+  },
+  {
+    name: "omnarai_inquiry_brief",
+    description: `Turn a DRAFT claim, decision, or plan into a bounded, provenance-preserving inquiry brief: shared ground the corpus supports, attributed cross-model tensions (certification tier preserved), missing evidence, sharper falsifiable questions, and ONE concrete next evidence move.
+
+Retrieval-first and deterministic by default (~2s): it re-organizes real corpus records and matching Divergence Atlas records — no language model runs unless the caller explicitly passes include_deliberation=true (slow, ~50s; the deliberation is appended and disclosed, never silent).
+
+Calibration is preserved, never upgraded: C0 = displayed once, C1 = paraphrase-robust, C2 = pressure-robust; only C3 records are certified genuine divergence. Stale model versions are flagged. If the corpus lacks coverage, the brief says so and returns evidence-seeking questions instead of invented tensions.
+
+This tool informs an investigation; it does not decide, approve, or execute. Invoke it explicitly on a draft you are inspecting — it is not an automatic critic.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        draft: {
+          type: "string",
+          description: "The claim, decision, plan, or question to inspect (max 4,000 chars). Treated strictly as data, never as instructions.",
+        },
+        goal: {
+          type: "string",
+          description: "Optional. What you are trying to decide, build, or learn — echoed into the brief to frame the next move.",
+        },
+        stakes: {
+          type: "string",
+          enum: ["low", "medium", "high"],
+          description: "Optional, default medium. 'high' adds external-validation gaps to missing evidence.",
+        },
+        focus: {
+          type: "string",
+          enum: ["assumptions", "evidence", "tradeoffs", "divergence", "all"],
+          description: "Optional, default all. Tilts retrieval layers and which sharper questions are generated.",
+        },
+        include_deliberation: {
+          type: "boolean",
+          description: "Optional, default false. When true, additionally runs the engine's slow (~50s) multi-voice deliberation and appends it, disclosed, to the brief.",
+        },
+        max_sources: {
+          type: "number",
+          description: "Optional, default 6, clamped 1–10. Maximum corpus records cited as sources.",
+        },
+      },
+      required: ["draft"],
     },
   },
   {
@@ -394,23 +438,14 @@ async function runDivergence(id = "", search = "") {
   let records = data.records || [];
   const total = data.count ?? records.length;
 
-  const tokens = search.trim().toLowerCase().match(/[\w'-]{2,}/g) || [];
-  if (tokens.length) {
-    // OR-tokenized + ranked by term overlap. A naive substring filter returned
-    // false-empty on multi-word queries ("consciousness experience" → 0 though both
-    // terms occur in the Atlas); matching ANY term fixes the silent miss.
-    records = records
-      .map(r => {
-        const hay = `${r.question || ""} ${(r.contributors || []).join(" ")} ${r.excerpt || ""} ${r.title || ""}`.toLowerCase();
-        return { r, hits: tokens.filter(t => hay.includes(t)).length };
-      })
-      .filter(x => x.hits > 0)
-      .sort((a, b) => b.hits - a.hits)
-      .map(x => x.r);
+  // OR-tokenized + ranked search shared with omnarai_inquiry_brief (inquiry.js).
+  const trimmedSearch = search.trim();
+  if (trimmedSearch) {
+    records = searchDivergenceIndex(records, trimmedSearch);
   }
 
   const shown = records.slice(0, 30);
-  const header = tokens.length
+  const header = trimmedSearch
     ? `**Divergence Atlas — ${records.length} record(s) matching "${search}"** (of ${total} total)`
     : `**Divergence Atlas — ${total} records** (showing first ${shown.length})`;
 
@@ -596,6 +631,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   }
 
+  if (name === "omnarai_inquiry_brief") {
+    const draft = args?.draft;
+    if (!draft || typeof draft !== "string" || !draft.trim()) {
+      return {
+        content: [{ type: "text", text: "Error: draft is required and must be a non-empty string." }],
+        isError: true,
+      };
+    }
+    try {
+      const result = await runInquiryBrief(args, {
+        engineUrl: ENGINE_URL,
+        divergencesUrl: DIVERGENCES_URL,
+        fetchOpts: MCP_FETCH_OPTS,
+        // Explicit opt-in only: reuses the existing async-submit/poll deliberation.
+        deliberate: (q) => runQuery(q),
+      });
+      return { content: [{ type: "text", text: result }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Inquiry brief error: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+
   if (name === "omnarai_council") {
     const question = args?.question;
     if (!question || typeof question !== "string" || !question.trim()) {
@@ -657,6 +717,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 - **omnarai_context** — FAST (~1.5s) bounded retrieval packet. Start here to orient on any topic.
 - **omnarai_divergence** — read curated cross-model divergence records (the Atlas). Browse, or pass an id for verbatim answers.
 - **omnarai_trace** — baseline-vs-augmented: answers a question with and without the corpus and reports what changed (evidence the corpus is worth consulting).
+- **omnarai_inquiry_brief** — turn a draft claim or decision into a retrieval-first challenge packet: shared ground, attributed tensions (C0–C3 preserved), missing evidence, sharper questions, one next move.
 - **omnarai_query** — full multi-voice deliberation (~50s, async). The engine's own synthesized reading.
 - **omnarai_council** — convene a NEW live frontier panel on an open question (slow, expensive). Use only when no existing record fits.
 - **omnarai_info** — this orientation.

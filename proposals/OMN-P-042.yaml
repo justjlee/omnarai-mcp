@@ -1,0 +1,56 @@
+id: OMN-P-042
+title: Add a retrieval-first Inquiry Brief MCP tool
+status: approved
+owner: Omnarai maintainers
+created_at: 2026-07-16
+
+problem:
+  Agents and researchers can retrieve Omnarai material, but do not yet have a compact,
+  provenance-preserving workflow that turns a draft claim or decision into better questions
+  and a concrete next evidence move.
+
+decision:
+  Add omnarai_inquiry_brief to the MCP server. The tool will use retrieval by default and
+  optionally use long-running deliberation only when explicitly requested.
+
+in_scope:
+  - One new MCP tool using existing project conventions.
+  - Input and output contracts specified in the handoff packet's 02-implementation-spec.md.
+  - Retrieval-first request path and bounded divergence integration when available.
+  - Attribution, evidence, certification, and freshness preservation.
+  - Tests and documentation.
+
+out_of_scope:
+  - Automatically invoking the tool in every agent response.
+  - Changing existing query/info tool behavior.
+  - Writing to the corpus or approving contributions.
+  - Claiming that cross-model outputs establish consciousness or independent agency.
+
+acceptance_criteria:
+  - Returns shared ground, tensions, missing evidence, sharper questions, and one next move.
+  - Keeps source IDs, titles, contributors, and evidence labels traceable.
+  - Treats C0/C1/C2/C3 certification terminology correctly.
+  - Uses retrieval only by default; deliberation is explicit opt-in.
+  - Has focused automated tests and project documentation.
+
+verification:
+  - Run formatter, type checker, test suite, and build/lint commands supported by the repo.
+  - Complete the smoke test in the handoff packet's 03-acceptance-test-plan.md.
+
+adaptation_notes:
+  - The server is a single-file plain-JS thin client with no LLM path of its own, so the
+    default brief is the spec's fallback — deterministic, source-led composition. The
+    heuristic questions are templates keyed to retrieved evidence; the opt-in
+    include_deliberation path reuses the existing async-submit/poll deliberation.
+  - Composition logic lives in inquiry.js (not index.js) so tests can import it without
+    starting the stdio server. Divergence index search is shared with omnarai_divergence.
+  - The repo has no formatter, type checker, or linter; verification uses node --check,
+    node --test, and the live smoke test. Structured output is delivered as a fenced JSON
+    payload inside the markdown result, matching the server's text-content convention.
+
+delivery:
+  status: pending
+  commit_or_pr: null
+  changed_files: []
+  verification_results: []
+  known_limits: []
