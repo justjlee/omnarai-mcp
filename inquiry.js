@@ -407,6 +407,10 @@ export function formatInquiryBrief(brief, deliberationText = "") {
  * deliberate(query) — optional async fn running the engine's slow deliberation
  * (index.js passes its existing async-submit/poll runQuery). Only invoked when
  * the caller explicitly sets include_deliberation: true.
+ *
+ * Returns { text, structured }: rendered markdown (with an embedded JSON fence
+ * as fallback for clients without structuredContent support) plus the brief
+ * object itself for the MCP structuredContent field.
  */
 export async function runInquiryBrief(args, deps) {
   const input = normalizeInquiryInput(args);
@@ -460,5 +464,5 @@ export async function runInquiryBrief(args, deps) {
     }
   }
 
-  return formatInquiryBrief(brief, deliberationText);
+  return { text: formatInquiryBrief(brief, deliberationText), structured: brief };
 }

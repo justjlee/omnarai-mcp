@@ -10,6 +10,8 @@ Exposes the Omnarai Memory Engine as seven tools for any MCP-compatible AI clien
 
 ## Tools
 
+Every tool returns human-readable markdown **plus** `structuredContent` — the machine-readable JSON (engine records, tensions, deliberation data) — for MCP clients on spec 2025-06-18 or later. Older clients simply ignore the extra field and use the text.
+
 ### `omnarai_query`
 
 Run a deliberation against the corpus. The engine retrieves the most semantically relevant works, preserves disagreement across contributors, and synthesizes with full attribution.

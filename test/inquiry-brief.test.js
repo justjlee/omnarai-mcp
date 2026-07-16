@@ -2,6 +2,9 @@
  * Acceptance tests for omnarai_inquiry_brief (proposal OMN-P-042).
  * Runs with the built-in test runner: `npm test` (node --test).
  * All upstream responses are mocked via global.fetch — no network.
+ *
+ * runInquiryBrief returns { text, structured }: rendered markdown (with a
+ * fallback JSON fence) plus the brief object used for MCP structuredContent.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -123,9 +126,9 @@ function installFetch(t, routes, calls = []) {
   return calls;
 }
 
-function parseBrief(text) {
+function fenceJson(text) {
   const m = text.match(/```json\n([\s\S]*?)\n```/);
-  assert.ok(m, "output must contain a fenced JSON payload");
+  assert.ok(m, "output text must contain a fenced JSON payload");
   return JSON.parse(m[1]);
 }
 
@@ -146,18 +149,20 @@ test("retrieval-first: uses mode=retrieve, never the deliberation path, sources 
   assert.ok(!calls.some((c) => c.includes("async=1") || c.includes("sync=1")), "never touches deliberation endpoints");
   assert.equal(deliberated, false, "deliberate() not invoked without opt-in");
 
-  const brief = parseBrief(out);
+  const brief = out.structured;
   assert.equal(brief.trace.mode, "retrieve");
   assert.ok(brief.sources.length > 0);
   for (const s of brief.sources) {
     assert.ok(s.id, "source has an id");
     assert.ok(Array.isArray(s.contributors), "source has contributors");
   }
+  // The fallback JSON fence and the structured payload must agree.
+  assert.deepEqual(fenceJson(out.text), brief);
 });
 
 test("max_sources bounds the corpus records cited", async (t) => {
   installFetch(t, { index: divIndex([]) });
-  const brief = parseBrief(await runInquiryBrief({ draft: DRAFT, max_sources: 1 }, DEPS));
+  const { structured: brief } = await runInquiryBrief({ draft: DRAFT, max_sources: 1 }, DEPS);
   assert.equal(brief.sources.filter((s) => s.role !== "divergence-atlas").length, 1);
 });
 
@@ -169,9 +174,8 @@ test("C0 record is never called a genuine divergence", async (t) => {
     full: { "OMN-D-0001": divFull({ tier: "C0" }) },
   });
   const out = await runInquiryBrief({ draft: DRAFT }, DEPS);
-  const brief = parseBrief(out);
-  assert.equal(brief.tensions[0].certification.tier, "C0");
-  assert.ok(!out.includes("genuine divergence"), "the phrase is reserved for C3");
+  assert.equal(out.structured.tensions[0].certification.tier, "C0");
+  assert.ok(!out.text.includes("genuine divergence"), "the phrase is reserved for C3");
 });
 
 test("C3 record may carry the phrase and exposes its source id", async (t) => {
@@ -179,8 +183,7 @@ test("C3 record may carry the phrase and exposes its source id", async (t) => {
     index: divIndex([INDEX_ENTRY]),
     full: { "OMN-D-0001": divFull({ tier: "C3" }) },
   });
-  const out = await runInquiryBrief({ draft: DRAFT }, DEPS);
-  const brief = parseBrief(out);
+  const { structured: brief } = await runInquiryBrief({ draft: DRAFT }, DEPS);
   assert.equal(brief.tensions[0].certification.tier, "C3");
   assert.ok(brief.tensions[0].certification.label.includes("genuine divergence"));
   assert.deepEqual(brief.tensions[0].position_a.source_ids, ["OMN-D-0001"]);
@@ -194,17 +197,17 @@ test("stale model versions produce a freshness note", async (t) => {
     full: { "OMN-D-0001": divFull({ stale: true }) },
   });
   const out = await runInquiryBrief({ draft: DRAFT }, DEPS);
-  const brief = parseBrief(out);
+  const brief = out.structured;
   assert.equal(brief.tensions[0].freshness.stale, true);
   assert.ok(brief.tensions[0].freshness.note.includes("gpt-4o-2024"));
-  assert.ok(out.includes("Stale model version"), "note surfaces in the rendered brief");
+  assert.ok(out.text.includes("Stale model version"), "note surfaces in the rendered brief");
 });
 
 // ── 4. No invented evidence ───────────────────────────────────────────────────
 
 test("empty retrieval yields an honest brief: no shared ground, no tensions, explicit limits, evidence-seeking questions", async (t) => {
   installFetch(t, { retrieve: { records: [] }, index: divIndex([]) });
-  const brief = parseBrief(await runInquiryBrief({ draft: DRAFT }, DEPS));
+  const { structured: brief } = await runInquiryBrief({ draft: DRAFT }, DEPS);
   assert.deepEqual(brief.shared_ground, []);
   assert.deepEqual(brief.tensions, []);
   assert.ok(brief.limits.length > 0);
@@ -240,17 +243,16 @@ test("include_deliberation=true uses the deliberation path and discloses it in t
     { ...DEPS, deliberate: async (q) => { askedWith = q; return "DELIBERATION-TEXT"; } }
   );
   assert.ok(askedWith.includes(DRAFT), "deliberation receives the draft");
-  assert.ok(out.includes("DELIBERATION-TEXT"), "deliberation output is appended, disclosed");
-  assert.equal(parseBrief(out).trace.mode, "retrieve_plus_deliberation");
+  assert.ok(out.text.includes("DELIBERATION-TEXT"), "deliberation output is appended, disclosed");
+  assert.equal(out.structured.trace.mode, "retrieve_plus_deliberation");
 });
 
 test("deliberation failure is reported cleanly; brief remains retrieval-only", async (t) => {
   installFetch(t, { index: divIndex([]) });
-  const out = await runInquiryBrief(
+  const { structured: brief } = await runInquiryBrief(
     { draft: DRAFT, include_deliberation: true },
     { ...DEPS, deliberate: async () => { throw new Error("boom"); } }
   );
-  const brief = parseBrief(out);
   assert.equal(brief.trace.mode, "retrieve");
   assert.ok(brief.limits.some((l) => l.includes("Deliberation was requested but failed")));
 });
@@ -262,7 +264,7 @@ test("every source-backed item references at least one returned source id", asyn
     index: divIndex([INDEX_ENTRY]),
     full: { "OMN-D-0001": divFull() },
   });
-  const brief = parseBrief(await runInquiryBrief({ draft: DRAFT }, DEPS));
+  const { structured: brief } = await runInquiryBrief({ draft: DRAFT }, DEPS);
   const sourceIds = new Set(brief.sources.map((s) => s.id));
   for (const g of brief.shared_ground) {
     assert.ok(g.source_ids.length > 0);
@@ -285,7 +287,7 @@ test("retrieval outage fails loud and names the layer", async (t) => {
 
 test("divergence outage degrades with a stated limit, not invented tensions", async (t) => {
   installFetch(t, { indexStatus: 500 });
-  const brief = parseBrief(await runInquiryBrief({ draft: DRAFT }, DEPS));
+  const { structured: brief } = await runInquiryBrief({ draft: DRAFT }, DEPS);
   assert.deepEqual(brief.tensions, []);
   assert.equal(brief.trace.divergence_response_used, false);
   assert.ok(brief.limits.some((l) => l.includes("Divergence layer unavailable")));
