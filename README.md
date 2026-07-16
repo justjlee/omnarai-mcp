@@ -101,6 +101,35 @@ Summon a **live** panel of frontier models on one question. Unlike `omnarai_quer
 
 Returns corpus statistics, contributor list, key concepts, retrieval architecture details, and the full Lattice Glyph reference. Use this to orient before querying.
 
+### Decision Ledger tools (opt-in — `OMNARAI_DECISIONS_DIR`)
+
+Three additional tools implement the provenance-to-shipping workflow (proposal `proposals/OMN-P-043.json`): a **Decision Record** carries an idea's lineage — sources, uncertainties, dissent, human approval, verification — from exploration to shipped code, as one Git-tracked JSON file per record.
+
+- **`omnarai_create_decision_record`** — new record in `exploring` status. Grants **no** approval and **no** implementation authority.
+- **`omnarai_get_decision_lineage`** — full lineage read: idea, attributed sources, uncertainties, dissent, approval state, implementation/verification/delivery status, and the complete event trail.
+- **`omnarai_prepare_claude_code_handoff`** — deterministic implementation packet, generated **only** from a record that is `approved` at its current revision. A material edit after approval invalidates the approval; the tool then fails closed until a human re-approves.
+
+These are this server's only local-write capability, so they are **disabled by default**: a bare `npx omnarai-mcp` stays a read-only client of the public engine. To enable them, set the ledger directory explicitly:
+
+```json
+{
+  "mcpServers": {
+    "omnarai": {
+      "command": "npx",
+      "args": ["-y", "omnarai-mcp"],
+      "env": { "OMNARAI_DECISIONS_DIR": "/absolute/path/to/your/repo/proposals" }
+    }
+  }
+}
+```
+
+Deliberate limitations (Phase 1):
+
+- **Approval is an attestation, not identity.** A human records approval by editing the ledger (in this repo: via Git). Anyone with write access to the directory can edit records; Git history is the audit trail. Do not treat this as strong authorization.
+- No MCP tool can approve, verify, or ship a record — state transitions exist as tested library functions (`lib/decision-state.js`) but approval and shipping remain explicit human actions.
+- Legacy YAML proposals (e.g. `OMN-P-042.yaml`) share the numbering but are not served by the store.
+- If the ledger lives in a cloud-synced directory (iCloud/Dropbox), sync conflict copies (`OMN-P-043 2.json`) are possible — Git review must catch them.
+
 ---
 
 ## Installation

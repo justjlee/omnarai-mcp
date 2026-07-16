@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "id": "OMN-P-043",
+  "title": "Phase 1 — repository-local Decision Ledger foundation",
+  "status": "verified",
+  "revision": 2,
+  "created_at": "2026-07-16T16:55:00Z",
+  "updated_at": "2026-07-16T17:38:13.571Z",
+  "idea": {
+    "problem": "AI-assisted implementation loses the evidence, uncertainty, dissent, and human authorization behind code changes. Nothing connects a shipped change back to the reasoning and the approval boundary that authorized it.",
+    "proposed_direction": "Add a repository-local, versioned Decision Ledger and a guarded Claude Code handoff generator to the Omnarai MCP server, unified with the repository's existing proposals/ convention (OMN-P numbering).",
+    "intended_outcome": "An approved implementation task carries its lineage — sources, uncertainty, dissent, approval, verification — from idea to code, inspectable via Git diffs and MCP tools."
+  },
+  "investigation": {
+    "sources": [
+      {
+        "id": "omnarai-provenance-to-shipping-handoff",
+        "title": "Codex handoff packet (14 files), 2026-07-16",
+        "relevance": "origin-of-the-design",
+        "note": "Packet assumptions were audited against the live checkout before approval; see the material_edit event."
+      },
+      {
+        "id": "OMN-P-042",
+        "title": "Prior proposal: omnarai_inquiry_brief",
+        "relevance": "existing-convention-reused",
+        "note": "Established the proposals/ record convention and the logic-module + thin-handler seam this phase follows."
+      }
+    ],
+    "uncertainties": [
+      "File-backed approval is an auditable attestation recorded in Git, not verified identity; do not describe it as strong authorization.",
+      "The repository lives in iCloud Drive: sync conflict copies and file eviction can undermine atomic-rename assumptions for the ledger.",
+      "Adoption policy (which changes require a record) is deferred to later phases."
+    ],
+    "dissent": [
+      {
+        "claim": "A decision ledger could become burdensome process overhead for small changes.",
+        "source_ids": [
+          "omnarai-provenance-to-shipping-handoff"
+        ],
+        "strength": "unresolved",
+        "response": "Phase 1 is deliberately limited: three tools, opt-in via OMNARAI_DECISIONS_DIR, no workflow mandates."
+      },
+      {
+        "claim": "Shipping local-write tools in a published npm package changes its read-only trust posture.",
+        "source_ids": [],
+        "strength": "material",
+        "response": "Resolved by gating: decision tools are hidden unless OMNARAI_DECISIONS_DIR is explicitly set, so a bare npx install stays read-only."
+      }
+    ]
+  },
+  "proposal": {
+    "decision": "Implement Phase 1 of the provenance-to-shipping workflow inside omnarai-mcp: schema, store, state machine, handoff gate, three opt-in MCP tools, tool/version parity enforcement, tests, and documentation — adapted to the repository as it actually is (7 tools, structuredContent convention, node --test, versions already at 1.5.0, remote MCP already live).",
+    "scope": [
+      "lib/decision-schema.js — runtime-validated Decision Record schema (schema_version 1) persisted as JSON.",
+      "lib/decision-store.js — ledger store confined to OMNARAI_DECISIONS_DIR: server-generated OMN-P ids continuing the existing numbering, exclusive creates, atomic replacement writes, validation on every read and write.",
+      "lib/decision-state.js — legal transitions, guards, revision policy: a material edit after approval invalidates the approval.",
+      "lib/decision-handoff.js — deterministic Claude Code packet from an approved record at its approved revision only.",
+      "lib/decision-tools.js + index.js wiring — omnarai_create_decision_record, omnarai_get_decision_lineage, omnarai_prepare_claude_code_handoff; advertised only when OMNARAI_DECISIONS_DIR is set.",
+      "lib/tool-definitions.js — canonical tool schemas; scripts/check-tool-parity.js enforces openai-tools.json parity and version agreement; wired into scripts/publish.sh.",
+      "index.js reads its version from package.json at startup (removes the drift mechanism that shipped 1.3.0 telemetry inside the 1.4.0 package).",
+      "openai-tools.json gains the omnarai_context layers/exclude/evidence_threshold properties it was missing.",
+      "Tests under test/ (node --test, mkdtemp, no network) and README documentation."
+    ],
+    "non_goals": [
+      "MCP tools that approve, transition status, verify, or ship records — approval and shipping remain explicit human actions recorded in Git.",
+      "Automated Git, PR, merge, deployment, or publishing actions; no credential handling of any kind.",
+      "Exposing the decision tools on the remote /api/mcp endpoint (see OMN-P-044).",
+      "Cloud database, dashboard, or identity/SSO integration."
+    ],
+    "acceptance_criteria": [
+      "An unapproved or stale-approved record cannot generate a Claude Code handoff.",
+      "Handoffs deterministically contain scope, non-goals, acceptance criteria, uncertainty, dissent, and verification requirements.",
+      "Storage cannot escape the configured ledger root; unsafe ids are rejected before touching the filesystem.",
+      "Corrupt or invalid records fail loud on read; creates are exclusive; updates are atomic replacements.",
+      "MCP and openai-tools.json surfaces agree on names, required fields, and property names; decision tools are provably local-only.",
+      "Runtime version, package.json, and server.json cannot silently disagree.",
+      "A bare npx omnarai-mcp (no OMNARAI_DECISIONS_DIR) advertises only the seven read-only engine tools."
+    ],
+    "verification_plan": [
+      "node --check on every changed JS file.",
+      "npm test (node --test): schema, store, state, handoff-gate, parity, and existing inquiry-brief suites.",
+      "node scripts/check-tool-parity.js as a standalone gate.",
+      "stdio smoke test: tools/list shows 7 tools without OMNARAI_DECISIONS_DIR and 10 with it; handoff call on this unapproved-at-creation record fails closed."
+    ]
+  },
+  "approval": {
+    "state": "approved",
+    "approved_by": "Jonathan Lee (justjlee)",
+    "approved_at": "2026-07-16T17:20:00Z",
+    "approved_revision": 2,
+    "note": "Approved in Claude Code chat ('1 approved'), with maintainer decisions: ledger unified into proposals/ (delegated), decision tools opt-in via OMNARAI_DECISIONS_DIR, runtime version read from package.json, remote packet 12 shelved in favor of a smaller hardening proposal, lib/ module layout. Chat approval is an attestation recorded here, not a verified identity."
+  },
+  "implementation": {
+    "status": "implemented",
+    "repository": "justjlee/omnarai-mcp",
+    "code_references": [
+      "local main (Phase 1 commit, 2026-07-16; hash recorded in a follow-up ledger commit)"
+    ],
+    "work_items": [
+      "Schema/store/state/handoff/tools modules under lib/",
+      "index.js wiring + version-drift fix",
+      "Parity checker + publish.sh gate",
+      "openai-tools.json omnarai_context repair",
+      "Tests and README documentation"
+    ]
+  },
+  "verification": {
+    "status": "passed",
+    "checks": [
+      {
+        "name": "node --check (index.js, lib/*.js, scripts/*.js, test/*.js)",
+        "status": "passed"
+      },
+      {
+        "name": "npm test (node --test)",
+        "status": "passed",
+        "detail": "43/43 — schema, store, state, handoff gate, parity, and prior inquiry-brief suites; all filesystem work in mkdtemp, no network"
+      },
+      {
+        "name": "node scripts/check-tool-parity.js",
+        "status": "passed",
+        "detail": "7 engine tools match openai-tools.json incl. restored layers/exclude/evidence_threshold; 3 decision tools local-only; versions agree at 1.5.0"
+      },
+      {
+        "name": "stdio smoke test",
+        "status": "passed",
+        "detail": "tools/list = 7 without OMNARAI_DECISIONS_DIR, 10 with; create -> exploring; lineage keeps dissent + event trail; handoff fails closed on unapproved and missing records; approved fixture yields deterministic packet"
+      }
+    ],
+    "known_limits": [
+      "Approval is a Git-tracked attestation, not authenticated identity.",
+      "The ledger lives in an iCloud-synced repository; sync conflicts can produce duplicate record files that Git review must catch.",
+      "State transitions exist as tested library functions but are deliberately not exposed as MCP tools in this phase."
+    ]
+  },
+  "delivery": {
+    "status": "not_shipped",
+    "shipped_by": null,
+    "shipped_at": null,
+    "commit_or_pr": null
+  },
+  "events": [
+    {
+      "type": "created",
+      "at": "2026-07-16T16:55:00Z",
+      "actor": "codex-handoff-packet",
+      "revision": 1,
+      "note": "Imported from 09-first-implementation-proposal.yaml (OMN-DEC-000042 in the packet's namespace)."
+    },
+    {
+      "type": "material_edit",
+      "at": "2026-07-16T17:05:00Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 2,
+      "note": "Re-issued against the actual repository: 7 tools (not 6), structuredContent on all tools (not text-only), node --test suite already exists, 1.4.0/1.3.0 version drift already fixed at 1.5.0 (mechanism remained), remote MCP already live at /api/mcp, ledger unified into proposals/ with OMN-P numbering."
+    },
+    {
+      "type": "status:proposed",
+      "at": "2026-07-16T17:06:00Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 2,
+      "note": "Corrected proposal presented to the maintainer with six explicit decision points."
+    },
+    {
+      "type": "status:approved",
+      "at": "2026-07-16T17:20:00Z",
+      "actor": "Jonathan Lee (justjlee)",
+      "revision": 2,
+      "note": "Approved via Claude Code chat; decisions 2–6 resolved as recorded in approval.note."
+    },
+    {
+      "type": "status:in_progress",
+      "at": "2026-07-16T17:22:00Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 2,
+      "note": "Implementation started under the approved scope."
+    },
+    {
+      "type": "status:verified",
+      "at": "2026-07-16T17:38:13.571Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 2,
+      "note": "All Phase 1 acceptance checks green. Shipped-transition deliberately left to the human maintainer."
+    }
+  ]
+}

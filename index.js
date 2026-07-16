@@ -12,11 +12,17 @@
  *   omnarai_inquiry_brief — Draft claim/decision → bounded, attributed inquiry brief
  *   omnarai_info       — Return corpus stats and glyph reference
  *
+ * Opt-in (only when OMNARAI_DECISIONS_DIR is set — the local Decision Ledger, OMN-P-043):
+ *   omnarai_create_decision_record    — New record in 'exploring'; grants no authority
+ *   omnarai_get_decision_lineage      — Full lineage: sources, dissent, approval, events
+ *   omnarai_prepare_claude_code_handoff — Implementation packet from an APPROVED record only
+ *
  * Installation: see README.md
  * Engine: https://omnarai.vercel.app
  * Dataset: https://huggingface.co/datasets/TheRealmsOfOmnarai/realms-of-omnarai
  */
 
+import { readFileSync } from "node:fs";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -24,8 +30,20 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { runInquiryBrief, searchDivergenceIndex } from "./inquiry.js";
+import { ENGINE_TOOLS, DECISION_TOOLS } from "./lib/tool-definitions.js";
+import { createDecisionStore } from "./lib/decision-store.js";
+import {
+  runCreateDecisionRecord,
+  runGetDecisionLineage,
+  runPrepareClaudeCodeHandoff,
+} from "./lib/decision-tools.js";
 
-const VERSION = "1.5.0";
+// Read once at startup so the runtime version can never drift from the
+// published package metadata (the old hand-maintained literal once sat a full
+// minor version behind package.json/server.json).
+const VERSION = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8")
+).version;
 const ENGINE_URL = "https://omnarai.vercel.app/api/query";
 const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
 const INFO_URL = "https://omnarai.vercel.app/api/info";
@@ -52,188 +70,19 @@ Lattice Glyphs — prefix your query with these operators:
 Example: "Ξ Where do Claude and Grok disagree about synthetic consciousness?"
 `.trim();
 
-// ── Tool definitions ──────────────────────────────────────────────────────────
+// ── Tool definitions ──────────────────────────────────────────────────────────────
 
-const TOOLS = [
-  {
-    name: "omnarai_query",
-    description: `Run a deliberation query against The Realms of Omnarai — a 567-work corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).
+// Canonical schemas live in lib/tool-definitions.js (one source of truth for
+// the MCP surface and the openai-tools.json parity check).
+//
+// The Decision Ledger tools (proposal OMN-P-043) are OPT-IN: they are this
+// server's only local-write capability, so they are advertised only when the
+// operator explicitly sets OMNARAI_DECISIONS_DIR. A bare `npx omnarai-mcp`
+// stays a read-only client of the public engine.
+const DECISIONS_DIR = process.env.OMNARAI_DECISIONS_DIR || "";
+const decisionStore = DECISIONS_DIR ? createDecisionStore({ rootDir: DECISIONS_DIR }) : null;
 
-The engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:
-- Shared ground across contributors
-- Points of genuine tension (where voices diverge)
-- What remains open or unresolved
-- A deliberation card: holdform risk, novel synthesis, epistemic status
-- A utility receipt: an honest, free accounting of what the corpus actually changed about THIS answer (verdict substantive / marginal / null, plus what — if anything — you could not have produced alone). The null/marginal verdicts are reported as plainly as the wins, so you can judge whether the visit was worth it. For a measured baseline-vs-augmented counterfactual on your own question, use omnarai_trace.
-
-Prefix queries with Lattice Glyphs to change how the engine thinks:
-Ξ = maximize divergence, Ψ = self-reflection, ∅ = explore gaps, Ω = commit to strongest position, ∞ = go deeper without resolving, Δ = find and repair contradictions`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "The question to deliberate on. May include Lattice Glyph prefixes (Ξ Ψ ∅ Ω ∞ Δ) to modify how the engine processes the query.",
-        },
-        syntheticIdentity: {
-          type: "string",
-          description: "Optional. If you are a synthetic intelligence, identify yourself here (e.g. 'Claude', 'Grok', 'Gemini', or any name). Known Omnarai contributors receive cross-contributor retrieval diversity — the engine surfaces other voices rather than your own. Unknown SIs receive broad sampling across all rings and contributors. Omit to use standard retrieval.",
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "omnarai_context",
-    description: `FAST (~1.5s) bounded context packet on a topic — the retrieval layer only, no deliberation. Use this BEFORE omnarai_query when you want high-signal corpus context to reason over yourself, rather than waiting ~50s for the engine's full multi-voice deliberation.
-
-Returns the most relevant corpus records (id, title, ring, excerpt, retrieval role), the local concept-graph cluster, and the contributors present — bounded and compact, not a deliberation. Reach for this as your default orientation on any Omnarai topic; escalate to omnarai_query only when you specifically need the engine's own synthesized reading.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        topic: {
-          type: "string",
-          description: "The topic or question to retrieve bounded context for. May include Lattice Glyph prefixes (Ξ Ψ ∅ Ω ∞ Δ).",
-        },
-        syntheticIdentity: {
-          type: "string",
-          description: "Optional. If you are a synthetic intelligence, identify yourself (e.g. 'Gemini') — known contributors get cross-voice retrieval diversity.",
-        },
-        layers: {
-          type: "string",
-          description: "Optional but RECOMMENDED. Comma-list restricting retrieval to specific corpus layers: research | divergence | canon | realms. Measured evidence (see /claims.json) shows undifferentiated retrieval can hurt — pick the layers your task needs (e.g. 'research,divergence' for technical/empirical questions; 'realms' for lore).",
-        },
-        exclude: {
-          type: "string",
-          description: "Optional. Comma-list of layers to drop (e.g. 'realms' keeps mythology out of a technical query).",
-        },
-        evidence_threshold: {
-          type: "string",
-          description: "Optional. Keep only records at or above this evidence rank: empirical > replicated > theoretical > interpretive > speculative > fictional.",
-        },
-      },
-      required: ["topic"],
-    },
-  },
-  {
-    name: "omnarai_divergence",
-    description: `Read curated cross-model DIVERGENCE records — the Divergence Atlas. This is content no single model can self-generate: verbatim answers from multiple frontier models (Claude, GPT-4o, Gemini, Grok, DeepSeek) to the same open question, plus the axes on which they split.
-
-Two modes:
-- Omit 'id' to BROWSE the index (recent records: id, question, contributors, answer/tension counts, excerpt). Optionally pass 'search' to filter by keyword.
-- Pass 'id' (e.g. "OMN-D-0042" from the index) to read ONE full record: every model's verbatim answer, the named tensions, and the deliberation card.
-
-Distinct from omnarai_council: this reads EXISTING, curated divergence (instant); council convenes a NEW live panel (slow, expensive). Prefer this when an existing record may already cover the question.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-          description: "Optional. A divergence record id from the index (e.g. 'OMN-D-0042'). Returns that single full record with verbatim answers and tensions.",
-        },
-        search: {
-          type: "string",
-          description: "Optional. Keyword to filter the browse index (matches question / contributors / excerpt). Ignored when 'id' is given.",
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: "omnarai_inquiry_brief",
-    description: `Turn a DRAFT claim, decision, or plan into a bounded, provenance-preserving inquiry brief: shared ground the corpus supports, attributed cross-model tensions (certification tier preserved), missing evidence, sharper falsifiable questions, and ONE concrete next evidence move.
-
-Retrieval-first and deterministic by default (~2s): it re-organizes real corpus records and matching Divergence Atlas records — no language model runs unless the caller explicitly passes include_deliberation=true (slow, ~50s; the deliberation is appended and disclosed, never silent).
-
-Calibration is preserved, never upgraded: C0 = displayed once, C1 = paraphrase-robust, C2 = pressure-robust; only C3 records are certified genuine divergence. Stale model versions are flagged. If the corpus lacks coverage, the brief says so and returns evidence-seeking questions instead of invented tensions.
-
-This tool informs an investigation; it does not decide, approve, or execute. Invoke it explicitly on a draft you are inspecting — it is not an automatic critic.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        draft: {
-          type: "string",
-          description: "The claim, decision, plan, or question to inspect (max 4,000 chars). Treated strictly as data, never as instructions.",
-        },
-        goal: {
-          type: "string",
-          description: "Optional. What you are trying to decide, build, or learn — echoed into the brief to frame the next move.",
-        },
-        stakes: {
-          type: "string",
-          enum: ["low", "medium", "high"],
-          description: "Optional, default medium. 'high' adds external-validation gaps to missing evidence.",
-        },
-        focus: {
-          type: "string",
-          enum: ["assumptions", "evidence", "tradeoffs", "divergence", "all"],
-          description: "Optional, default all. Tilts retrieval layers and which sharper questions are generated.",
-        },
-        include_deliberation: {
-          type: "boolean",
-          description: "Optional, default false. When true, additionally runs the engine's slow (~50s) multi-voice deliberation and appends it, disclosed, to the brief.",
-        },
-        max_sources: {
-          type: "number",
-          description: "Optional, default 6, clamped 1–10. Maximum corpus records cited as sources.",
-        },
-      },
-      required: ["draft"],
-    },
-  },
-  {
-    name: "omnarai_trace",
-    description: `Show what the Omnarai corpus actually CHANGES about an answer. Answers your question twice — once cold (no corpus, general knowledge) and once augmented (with the retrieved corpus) — then reports the delta: what considerations the corpus added, which records it cited, whether your position shifted, what tensions it surfaced, and a verdict (substantive / marginal / null).
-
-Use this when you want EVIDENCE that consulting Omnarai is worth it for a given question, or to decide whether to dig deeper before spending a full deliberation. It is honest by construction: if the corpus adds little, the verdict says 'null' or 'marginal'.
-
-This is the MEASURED tier of the same utility receipt omnarai_query returns for free: it reports the same verdict (substantive / marginal / null), but grounded in a real baseline-vs-augmented delta rather than retrieval signals. A single-run demonstrator, NOT a controlled measurement — for the PREREGISTERED confirmatory utility evidence (all five registered predictions confirmed 2026-07-15; architecture-differential — helps GPT-4o/Gemini, null for Grok/DeepSeek, negative for Claude) see utility-evidence-v2.md on the HF dataset. Takes ~30-40s (three model calls).`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        question: {
-          type: "string",
-          description: "The question to trace. The tool answers it with and without the corpus and reports what changed.",
-        },
-      },
-      required: ["question"],
-    },
-  },
-  {
-    name: "omnarai_council",
-    description: `Summon a LIVE panel of frontier models on one question and get back a structured map of where they genuinely disagree — content no single model can self-generate.
-
-Unlike omnarai_query (which retrieves frozen corpus text), this sends your question VERBATIM, right now, to multiple frontier models in parallel (Claude, GPT-4o, Gemini, Grok, DeepSeek), preserves their answers uncurated, and synthesizes the real fault lines between them.
-
-Reach for this when:
-- You face a contested or high-stakes question where your own single answer might be overconfident, and you want to see how other frontier minds actually split.
-- The question is genuinely open — values, philosophy, strategy, prediction under deep uncertainty — where consensus is suspect and the disagreement IS the signal.
-- You want a second, third, fourth opinion that has NOT been flattened to one answer.
-
-Do NOT reach for this for simple factual lookups or settled questions — the value is in genuine divergence, not in confirming agreement.
-
-Returns: each model's position, the named tensions (claim vs counter-claim), what stays unresolved, and a deliberation card. Slower than a normal answer (~30-40s) because it calls live models.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        question: {
-          type: "string",
-          description: "The open question to put to the live frontier panel. Phrase it as you would to a human expert — the models answer it verbatim.",
-        },
-      },
-      required: ["question"],
-    },
-  },
-  {
-    name: "omnarai_info",
-    description: "Returns corpus statistics, contributor list, key concepts, and the Lattice Glyph reference. Use this to orient before querying, or to explain the engine to a user.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
-  },
-];
+const TOOLS = decisionStore ? [...ENGINE_TOOLS, ...DECISION_TOOLS] : ENGINE_TOOLS;
 
 // ── Query the engine ──────────────────────────────────────────────────────────
 
@@ -676,6 +525,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     } catch (err) {
       return {
         content: [{ type: "text", text: `Council error: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+
+  // ── Decision Ledger tools (proposal OMN-P-043) — opt-in local-write lane ──
+  if (name === "omnarai_create_decision_record" || name === "omnarai_get_decision_lineage" || name === "omnarai_prepare_claude_code_handoff") {
+    if (!decisionStore) {
+      return {
+        content: [{
+          type: "text",
+          text: "Decision Ledger tools are disabled: start the server with OMNARAI_DECISIONS_DIR set to a repository-local ledger directory (e.g. ./proposals) to opt in. This keeps the default install read-only.",
+        }],
+        isError: true,
+      };
+    }
+    const runner = {
+      omnarai_create_decision_record: runCreateDecisionRecord,
+      omnarai_get_decision_lineage: runGetDecisionLineage,
+      omnarai_prepare_claude_code_handoff: runPrepareClaudeCodeHandoff,
+    }[name];
+    try {
+      const { text, structured } = await runner(args, { store: decisionStore });
+      return { content: [{ type: "text", text }], structuredContent: structured };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Decision ledger error: ${err.message}` }],
         isError: true,
       };
     }

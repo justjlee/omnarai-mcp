@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "id": "OMN-P-044",
+  "title": "Remote MCP hardening + cross-surface parity (supersedes the packet's Phase 2 proposal)",
+  "status": "proposed",
+  "revision": 1,
+  "created_at": "2026-07-16T17:36:00Z",
+  "updated_at": "2026-07-16T17:36:00Z",
+  "idea": {
+    "problem": "The Codex packet's 12-remote-mcp-proposal.yaml asks for a remote Streamable HTTP endpoint that already exists (omnarai.vercel.app/api/mcp, live and registered since 2026-07-16). What remains is not transport work but posture and parity: the endpoint's public read-only policy is de facto rather than documented, and tool definitions now exist in three places (stdio TOOLS, openai-tools.json, engine _mcp.js) with api/_inquiry.js as a manual keep-in-sync copy of inquiry.js.",
+    "proposed_direction": "Replace the packet's Phase 2 with a bounded hardening pass: document the public read-only access policy (Origin/auth/rate-limit stance made explicit), define a cross-repo tool-definition parity policy (automated check or documented duplication), and assert that Decision Ledger tools never appear on the remote surface.",
+    "intended_outcome": "The remote endpoint's trust boundary is stated rather than implied, drift between the three tool surfaces is detectable, and mutation authority provably stays out of the remote lane."
+  },
+  "investigation": {
+    "sources": [
+      {
+        "id": "omnarai-provenance-to-shipping-handoff/12-remote-mcp-proposal.yaml",
+        "title": "Packet Phase 2 proposal (superseded by reality)",
+        "relevance": "origin — most acceptance criteria already satisfied by the live endpoint"
+      },
+      {
+        "id": "omnarai-memory-engine/api/_mcp.js",
+        "title": "Live remote MCP implementation (stateless streamable-http, 8 tools incl. omnarai_job)",
+        "relevance": "current-state evidence: CORS *, no auth, no explicit rate limit, job-based bounding for slow paths"
+      }
+    ],
+    "uncertainties": [
+      "Whether cross-repo parity should be automated (shared module or CI check spanning omnarai-mcp and omnarai-memory-engine) or remain a documented manual release-checklist item.",
+      "Whether any rate limiting should be added at the endpoint or left to platform-level protections, given Hobby-plan constraints."
+    ],
+    "dissent": [
+      {
+        "claim": "A public unauthenticated endpoint invites abuse and cost.",
+        "source_ids": ["omnarai-provenance-to-shipping-handoff/12-remote-mcp-proposal.yaml"],
+        "strength": "material",
+        "response": "The surface is read-oriented and the expensive council path is the same one already exposed via public HTTP APIs; the proposal documents this stance instead of pretending the endpoint is private."
+      }
+    ]
+  },
+  "proposal": {
+    "decision": "Do NOT build the packet's Phase 2. Instead: (1) publish a written access policy for /api/mcp (public read-only, CORS stance, what is and is not rate limited); (2) adopt a cross-surface parity policy covering stdio TOOLS, openai-tools.json, and engine _mcp.js, plus the _inquiry.js copy; (3) add an explicit assertion/test that no decision-ledger or other write tool ships on the remote surface.",
+    "scope": [
+      "Access-policy documentation for the remote endpoint (engine repo).",
+      "Cross-surface parity policy and, if chosen, an automated check.",
+      "Remote-surface exclusion assertion for decision tools."
+    ],
+    "non_goals": [
+      "Authentication/OAuth work, new transports, or session state.",
+      "Remote approval, contribution writes, publishing, or deployment tools.",
+      "Breaking the stdio npm package."
+    ],
+    "acceptance_criteria": [
+      "A visiting agent can read the endpoint's access policy and trust boundary.",
+      "A tool-definition change in one surface is caught (by check or checklist) before release.",
+      "The remote tools/list provably never includes the decision-ledger tools."
+    ],
+    "verification_plan": [
+      "Live curl of /api/mcp tools/list (with x-omnarai-self header) compared against the stdio surface.",
+      "Parity check run across both repositories.",
+      "Review of the published access-policy text."
+    ]
+  },
+  "approval": {
+    "state": "not_requested",
+    "approved_by": null,
+    "approved_at": null,
+    "approved_revision": null,
+    "note": "Awaiting maintainer review after OMN-P-043 ships. Scope spans two repositories; approval should name which repo moves first."
+  },
+  "implementation": {
+    "status": "not_started",
+    "repository": null,
+    "code_references": [],
+    "work_items": []
+  },
+  "verification": {
+    "status": "not_started",
+    "checks": [],
+    "known_limits": []
+  },
+  "delivery": {
+    "status": "not_shipped",
+    "shipped_by": null,
+    "shipped_at": null,
+    "commit_or_pr": null
+  },
+  "events": [
+    {
+      "type": "created",
+      "at": "2026-07-16T17:36:00Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 1,
+      "note": "Created per maintainer decision (option 1): shelve the packet's remote Phase 2 as superseded by the live endpoint; propose hardening + parity instead."
+    },
+    {
+      "type": "status:proposed",
+      "at": "2026-07-16T17:36:00Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 1,
+      "note": "Proposed for later maintainer review; no implementation authority."
+    }
+  ]
+}

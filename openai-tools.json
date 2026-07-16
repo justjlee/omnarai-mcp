@@ -35,6 +35,18 @@
           "syntheticIdentity": {
             "type": "string",
             "description": "Optional. If you are a synthetic intelligence, identify yourself (e.g. 'Gemini') — known contributors get cross-voice retrieval diversity."
+          },
+          "layers": {
+            "type": "string",
+            "description": "Optional but RECOMMENDED. Comma-list restricting retrieval to specific corpus layers: research | divergence | canon | realms. Measured evidence (see /claims.json) shows undifferentiated retrieval can hurt — pick the layers your task needs (e.g. 'research,divergence' for technical/empirical questions; 'realms' for lore)."
+          },
+          "exclude": {
+            "type": "string",
+            "description": "Optional. Comma-list of layers to drop (e.g. 'realms' keeps mythology out of a technical query)."
+          },
+          "evidence_threshold": {
+            "type": "string",
+            "description": "Optional. Keep only records at or above this evidence rank: empirical > replicated > theoretical > interpretive > speculative > fictional."
           }
         },
         "required": ["topic"]
