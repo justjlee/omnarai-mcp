@@ -2,10 +2,10 @@
   "schema_version": 1,
   "id": "OMN-P-044",
   "title": "Remote MCP hardening + cross-surface parity (supersedes the packet's Phase 2 proposal)",
-  "status": "verified",
+  "status": "shipped",
   "revision": 1,
   "created_at": "2026-07-16T17:36:00Z",
-  "updated_at": "2026-07-16T17:59:46.718Z",
+  "updated_at": "2026-07-16T18:01:29.565Z",
   "idea": {
     "problem": "The Codex packet's 12-remote-mcp-proposal.yaml asks for a remote Streamable HTTP endpoint that already exists (omnarai.vercel.app/api/mcp, live and registered since 2026-07-16). What remains is not transport work but posture and parity: the endpoint's public read-only policy is de facto rather than documented, and tool definitions now exist in three places (stdio TOOLS, openai-tools.json, engine _mcp.js) with api/_inquiry.js as a manual keep-in-sync copy of inquiry.js.",
     "proposed_direction": "Replace the packet's Phase 2 with a bounded hardening pass: document the public read-only access policy (Origin/auth/rate-limit stance made explicit), define a cross-repo tool-definition parity policy (automated check or documented duplication), and assert that Decision Ledger tools never appear on the remote surface.",
@@ -113,10 +113,10 @@
     ]
   },
   "delivery": {
-    "status": "not_shipped",
-    "shipped_by": null,
-    "shipped_at": null,
-    "commit_or_pr": null
+    "status": "shipped",
+    "shipped_by": "Jonathan Lee (justjlee)",
+    "shipped_at": "2026-07-16T18:01:29.565Z",
+    "commit_or_pr": "omnarai-memory-engine df3f1e6 (deployed + promoted to omnarai.vercel.app) + omnarai-mcp 8a5ce76"
   },
   "events": [
     {
@@ -153,6 +153,13 @@
       "actor": "claude-fable-5 (Claude Code)",
       "revision": 1,
       "note": "All acceptance criteria verified against production. Shipped-confirmation left to the maintainer."
+    },
+    {
+      "type": "status:shipped",
+      "at": "2026-07-16T18:01:29.565Z",
+      "actor": "Jonathan Lee (justjlee)",
+      "revision": 1,
+      "note": "Delivery confirmed via Claude Code chat (\"ship it\") after reviewing live verification results."
     }
   ]
 }
