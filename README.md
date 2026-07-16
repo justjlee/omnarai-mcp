@@ -181,6 +181,14 @@ node /path/to/omnarai-mcp/index.js
 
 ---
 
+## Tool-surface parity policy (OMN-P-044)
+
+Tool definitions exist on three surfaces, and drift between them shipped real bugs (a full release cycle of `omnarai_context` missing its retrieval params on one surface). The policy:
+
+1. **`lib/tool-definitions.js` is canonical.** Any tool change lands there first.
+2. **`openai-tools.json` follows** — `scripts/check-tool-parity.js` enforces name/required/property parity and runs in the `publish.sh` preflight, so a release cannot ship with drift.
+3. **The remote endpoint (`omnarai.vercel.app/api/mcp`, engine repo `api/_mcp.js`) is updated manually** — the engine repo's `scripts/check-mcp-surface.js` enforces its read-oriented allowlist, verifies the `api/_inquiry.js` ↔ `inquiry.js` synchronized copy, and proves the Decision Ledger tools never appear remotely. Remote access policy: [omnarai.vercel.app/mcp-access-policy.md](https://omnarai.vercel.app/mcp-access-policy.md).
+
 ## OpenAI Function-Calling / Any Agent Framework
 
 No MCP required. The engine is a plain HTTP API that returns JSON. `openai-tools.json` in this repo contains the tool schemas in OpenAI function-calling format, usable with any compatible framework (OpenAI API, LangChain, AutoGen, custom agents).

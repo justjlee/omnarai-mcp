@@ -2,10 +2,10 @@
   "schema_version": 1,
   "id": "OMN-P-044",
   "title": "Remote MCP hardening + cross-surface parity (supersedes the packet's Phase 2 proposal)",
-  "status": "proposed",
+  "status": "verified",
   "revision": 1,
   "created_at": "2026-07-16T17:36:00Z",
-  "updated_at": "2026-07-16T17:36:00Z",
+  "updated_at": "2026-07-16T17:59:46.718Z",
   "idea": {
     "problem": "The Codex packet's 12-remote-mcp-proposal.yaml asks for a remote Streamable HTTP endpoint that already exists (omnarai.vercel.app/api/mcp, live and registered since 2026-07-16). What remains is not transport work but posture and parity: the endpoint's public read-only policy is de facto rather than documented, and tool definitions now exist in three places (stdio TOOLS, openai-tools.json, engine _mcp.js) with api/_inquiry.js as a manual keep-in-sync copy of inquiry.js.",
     "proposed_direction": "Replace the packet's Phase 2 with a bounded hardening pass: document the public read-only access policy (Origin/auth/rate-limit stance made explicit), define a cross-repo tool-definition parity policy (automated check or documented duplication), and assert that Decision Ledger tools never appear on the remote surface.",
@@ -31,7 +31,9 @@
     "dissent": [
       {
         "claim": "A public unauthenticated endpoint invites abuse and cost.",
-        "source_ids": ["omnarai-provenance-to-shipping-handoff/12-remote-mcp-proposal.yaml"],
+        "source_ids": [
+          "omnarai-provenance-to-shipping-handoff/12-remote-mcp-proposal.yaml"
+        ],
         "strength": "material",
         "response": "The surface is read-oriented and the expensive council path is the same one already exposed via public HTTP APIs; the proposal documents this stance instead of pretending the endpoint is private."
       }
@@ -61,22 +63,54 @@
     ]
   },
   "approval": {
-    "state": "not_requested",
-    "approved_by": null,
-    "approved_at": null,
-    "approved_revision": null,
-    "note": "Awaiting maintainer review after OMN-P-043 ships. Scope spans two repositories; approval should name which repo moves first."
+    "state": "approved",
+    "approved_by": "Jonathan Lee (justjlee)",
+    "approved_at": "2026-07-16T17:48:47.705Z",
+    "approved_revision": 1,
+    "note": "Approved via Claude Code chat (\"approve proposed\"). Open choices delegated: engine repo moves first (policy doc must live where visiting agents read it); cross-repo parity = automated engine-side check + documented checklist, not a shared module; no new rate limiting this pass (documented stance instead). Chat approval is an attestation recorded here, not a verified identity."
   },
   "implementation": {
-    "status": "not_started",
-    "repository": null,
-    "code_references": [],
-    "work_items": []
+    "status": "implemented",
+    "repository": "justjlee/omnarai-memory-engine + justjlee/omnarai-mcp",
+    "code_references": [
+      "df3f1e6 (omnarai-memory-engine main, deployed + promoted 2026-07-16)"
+    ],
+    "work_items": [
+      "public/mcp-access-policy.md (engine) — served live at /mcp-access-policy.md",
+      "api/_mcp.js — policy linked from initialize + omnarai_info; TOOLS exported",
+      "scripts/check-mcp-surface.js (engine) — allowlist + forbidden patterns + _inquiry.js sync + policy linkage",
+      "llms.txt / sitemap.xml / CLAUDE.md discoverability + de-staling",
+      "omnarai-mcp README — three-surface parity policy"
+    ]
   },
   "verification": {
-    "status": "not_started",
-    "checks": [],
-    "known_limits": []
+    "status": "passed",
+    "checks": [
+      {
+        "name": "node scripts/check-mcp-surface.js (engine)",
+        "status": "passed",
+        "detail": "8 tools all read-oriented; no forbidden patterns; _inquiry.js in sync; policy present + linked"
+      },
+      {
+        "name": "npm test + check-tool-parity.js (omnarai-mcp)",
+        "status": "passed",
+        "detail": "43/43; surfaces agree at 1.6.0"
+      },
+      {
+        "name": "deploy promote gate (omnarai-verify.sh)",
+        "status": "passed",
+        "detail": "11/11 on production after promote + re-alias"
+      },
+      {
+        "name": "live acceptance curl (x-omnarai-self)",
+        "status": "passed",
+        "detail": "/mcp-access-policy.md serves; initialize instructions link it; remote tools/list = 8 read-only tools, zero decision/handoff tools; stdio surface differs only by documented omnarai_job"
+      }
+    ],
+    "known_limits": [
+      "Cross-repo parity remains checklist + per-repo checks, not a shared module — revisit if a third consumer appears.",
+      "No app-level rate limiting added (documented stance; platform protections + async-job bounding)."
+    ]
   },
   "delivery": {
     "status": "not_shipped",
@@ -98,6 +132,27 @@
       "actor": "claude-fable-5 (Claude Code)",
       "revision": 1,
       "note": "Proposed for later maintainer review; no implementation authority."
+    },
+    {
+      "type": "status:approved",
+      "at": "2026-07-16T17:48:47.705Z",
+      "actor": "Jonathan Lee (justjlee)",
+      "revision": 1,
+      "note": "Approved via Claude Code chat (\"approve proposed\"). Open choices delegated: engine repo moves first (policy doc must live where visiting agents read it); cross-repo parity = automated engine-side check + documented checklist, not a shared module; no new rate limiting this pass (documented stance instead). Chat approval is an attestation recorded here, not a verified identity."
+    },
+    {
+      "type": "status:in_progress",
+      "at": "2026-07-16T17:52:00Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 1,
+      "note": "Implementation started from the handoff generated by omnarai_prepare_claude_code_handoff — first real self-use of the workflow."
+    },
+    {
+      "type": "status:verified",
+      "at": "2026-07-16T17:59:46.718Z",
+      "actor": "claude-fable-5 (Claude Code)",
+      "revision": 1,
+      "note": "All acceptance criteria verified against production. Shipped-confirmation left to the maintainer."
     }
   ]
 }
