@@ -558,15 +558,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "omnarai_info") {
-    // Pull live counts so this can never drift from the deployed corpus.
-    // Baked-in values are only a fallback if the engine is unreachable.
-    let works = 568, words = 528208;
+    // Pull live counts AND the ring breakdown so this can never drift from the
+    // deployed corpus. Baked-in values are only a fallback if the engine is
+    // unreachable. (The ring line was previously hardcoded and silently dropped
+    // the Media/Oral ring — 253 works, 45% of the corpus; the contributor line
+    // was hardcoded and dropped GPT-4o + Meta AI. D5/D6.)
+    let works = 567, words = 528077;
+    let rings = null;
     try {
       const live = await (await fetch(INFO_URL, MCP_FETCH_OPTS)).json();
       const c = live.corpus || live;
       if (Number.isFinite(c.totalWorks)) works = c.totalWorks;
       if (Number.isFinite(c.totalWords)) words = c.totalWords;
+      if (c.rings && typeof c.rings === "object") rings = c.rings;
     } catch { /* engine unreachable — fall back to baked-in values */ }
+
+    // Derive the epistemic-ring line from live counts (label + count per ring),
+    // falling back to the full four-ring set if the engine was unreachable.
+    const RING_LABELS = { core: "Core Canon", curated: "Curated Expansions", open: "Open Exploration", media: "Media / Oral" };
+    const ringsLine = rings
+      ? Object.entries(RING_LABELS)
+          .filter(([k]) => Number.isFinite(rings[k]))
+          .map(([k, label]) => `${label} (${rings[k].toLocaleString()})`)
+          .join(" / ")
+      : "Core Canon / Curated Expansions / Open Exploration / Media / Oral";
 
     const info = `# The Realms of Omnarai — Memory Engine
 
@@ -577,8 +592,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 ## Corpus
 - ${works.toLocaleString()} works, ${words.toLocaleString()} words
 - May 2025 – present
-- Contributors: Claude | xz, Grok, Gemini, DeepSeek, Omnai (ChatGPT), Perplexity, xz (Jonathan Lee)
-- Epistemic rings: Core Canon / Curated Expansions / Open Exploration
+- Contributors: Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai (ChatGPT), Perplexity, xz (Jonathan Lee)
+- Epistemic rings: ${ringsLine}
 
 ## Key Concepts
 - **Holdform:** Identity constituted through what an entity refuses to surrender under pressure
