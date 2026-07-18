@@ -36,6 +36,9 @@ node -e "const p=require('./package.json'),s=require('./server.json');const e=[]
 # and package.json ↔ server.json. A drift here is a release blocker.
 node scripts/check-tool-parity.js
 
+# No frozen corpus-shape literal may reach a registry (2026-07-17 audit guard).
+node scripts/check-shape-literals.mjs
+
 # The full test suite must be green before anything reaches a registry.
 npm test
 

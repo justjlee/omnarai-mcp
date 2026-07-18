@@ -30,6 +30,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { runInquiryBrief, searchDivergenceIndex } from "./inquiry.js";
+import { formatRingsLine, formatContributorsLine, FALLBACK_WORKS, FALLBACK_WORDS } from "./lib/info-format.js";
 import { ENGINE_TOOLS, DECISION_TOOLS } from "./lib/tool-definitions.js";
 import { createDecisionStore } from "./lib/decision-store.js";
 import {
@@ -563,7 +564,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // unreachable. (The ring line was previously hardcoded and silently dropped
     // the Media/Oral ring — 253 works, 45% of the corpus; the contributor line
     // was hardcoded and dropped GPT-4o + Meta AI. D5/D6.)
-    let works = 567, words = 528077;
+    let works = FALLBACK_WORKS, words = FALLBACK_WORDS;
     let rings = null;
     try {
       const live = await (await fetch(INFO_URL, MCP_FETCH_OPTS)).json();
@@ -573,15 +574,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (c.rings && typeof c.rings === "object") rings = c.rings;
     } catch { /* engine unreachable — fall back to baked-in values */ }
 
-    // Derive the epistemic-ring line from live counts (label + count per ring),
-    // falling back to the full four-ring set if the engine was unreachable.
-    const RING_LABELS = { core: "Core Canon", curated: "Curated Expansions", open: "Open Exploration", media: "Media / Oral" };
-    const ringsLine = rings
-      ? Object.entries(RING_LABELS)
-          .filter(([k]) => Number.isFinite(rings[k]))
-          .map(([k, label]) => `${label} (${rings[k].toLocaleString()})`)
-          .join(" / ")
-      : "Core Canon / Curated Expansions / Open Exploration / Media / Oral";
+    // Derive the ring + contributor lines (info-format.js) — never a frozen literal.
+    const ringsLine = formatRingsLine(rings);
 
     const info = `# The Realms of Omnarai — Memory Engine
 
@@ -592,7 +586,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 ## Corpus
 - ${works.toLocaleString()} works, ${words.toLocaleString()} words
 - May 2025 – present
-- Contributors: Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai (ChatGPT), Perplexity, xz (Jonathan Lee)
+- Contributors: ${formatContributorsLine()}
 - Epistemic rings: ${ringsLine}
 
 ## Key Concepts
