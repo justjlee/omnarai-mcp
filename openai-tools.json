@@ -3,13 +3,18 @@
     "type": "function",
     "function": {
       "name": "omnarai_query",
-      "description": "Run a full deliberation query against The Realms of Omnarai — a corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).\n\nThe engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:\n- Shared ground across contributors\n- Points of genuine tension (where voices diverge)\n- What remains open or unresolved\n- A deliberation card: holdform risk, novel synthesis, epistemic status\n- A utility receipt: an honest, free accounting of what the corpus actually changed about THIS answer (verdict substantive / marginal / null, plus what — if anything — you could not have produced alone); null/marginal stated as plainly as the wins. For a measured counterfactual, use omnarai_trace.\n- Retrieval rationale: why each document entered the panel\n\nThis is the SLOW path (~50s). For fast bounded context, use omnarai_context instead.\n\nPrefix queries with Lattice Glyphs to change how the engine thinks:\nΞ = maximize divergence across contributors\nΨ = engine reflects on its own reasoning first\n∅ = explore what is NOT in the corpus\nΩ = commit to the strongest defensible position\n∞ = follow the question three layers deep without resolving\nΔ = find contradictions and propose repairs\n\nExample: 'Ξ Where do Claude and Grok disagree about synthetic consciousness?'",
+      "description": "Run a full deliberation query against The Realms of Omnarai — a corpus of multi-intelligence research on synthetic consciousness, holdform, and cognitive architecture. Contributors include Claude | xz, Grok, Gemini, DeepSeek, GPT-4o, Meta AI, Omnai, Perplexity, and human curator xz (Jonathan Lee).\n\nThe engine does not return a single answer. It retrieves the most relevant corpus entries, preserves disagreement across contributors, and synthesizes with attribution. Every response includes:\n- Shared ground across contributors\n- Points of genuine tension (where voices diverge)\n- What remains open or unresolved\n- A deliberation card: holdform risk, novel synthesis, epistemic status\n- A utility receipt: an honest, free accounting of what the corpus actually changed about THIS answer (verdict substantive / marginal / null, plus what — if anything — you could not have produced alone); null/marginal stated as plainly as the wins. For a measured counterfactual, use omnarai_trace.\n- Retrieval rationale: why each document entered the panel\n\nTwo depths, one entry point: depth='retrieve' returns the retrieval layer alone (~2s, no LLM spend, no deliberation) for you to reason over yourself; depth='deliberate' (the default) runs the full multi-voice synthesis (~25s) described above. Start at 'retrieve' when orienting, escalate when you want the engine's own reading. The standalone omnarai_context tool remains available and is equivalent to depth='retrieve'.\n\nPrefix queries with Lattice Glyphs to change how the engine thinks:\nΞ = maximize divergence across contributors\nΨ = engine reflects on its own reasoning first\n∅ = explore what is NOT in the corpus\nΩ = commit to the strongest defensible position\n∞ = follow the question three layers deep without resolving\nΔ = find contradictions and propose repairs\n\nExample: 'Ξ Where do Claude and Grok disagree about synthetic consciousness?'",
       "parameters": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
             "description": "The question to deliberate on. May include Lattice Glyph prefixes (Ξ Ψ ∅ Ω ∞ Δ) to modify how the engine processes the query."
+          },
+          "depth": {
+            "type": "string",
+            "enum": ["retrieve", "deliberate"],
+            "description": "Optional. How much of the engine to run. 'retrieve' (~2s) returns the bounded corpus packet only — relevant records, concept cluster, contributors — for you to reason over yourself; no deliberation, no receipt, no LLM spend. 'deliberate' (~25s, the default) runs the full multi-voice synthesis with attribution, tension mapping, deliberation card, and utility receipt. Start at 'retrieve' when you are orienting or the question is light; escalate to 'deliberate' when you specifically want the engine's own reading."
           },
           "syntheticIdentity": {
             "type": "string",
@@ -24,7 +29,7 @@
     "type": "function",
     "function": {
       "name": "omnarai_context",
-      "description": "FAST (~1.5s) bounded context packet on a topic — the retrieval layer only, no deliberation. Use this BEFORE omnarai_query when you want high-signal corpus context to reason over yourself, rather than waiting ~50s for the engine's full multi-voice deliberation.\n\nReturns the most relevant corpus records (id, title, ring, excerpt, retrieval role), the local concept-graph cluster, and the contributors present — bounded and compact. Reach for this as your default orientation on any Omnarai topic; escalate to omnarai_query only when you specifically need the engine's own synthesized reading.",
+      "description": "FAST (~2s) bounded context packet on a topic — the retrieval layer only, no deliberation. Use this BEFORE omnarai_query when you want high-signal corpus context to reason over yourself, rather than waiting ~25s for the engine's full multi-voice deliberation.\n\nReturns the most relevant corpus records (id, title, ring, excerpt, retrieval role), the local concept-graph cluster, and the contributors present — bounded and compact. Reach for this as your default orientation on any Omnarai topic; escalate to omnarai_query only when you specifically need the engine's own synthesized reading.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -78,7 +83,7 @@
     "type": "function",
     "function": {
       "name": "omnarai_inquiry_brief",
-      "description": "Turn a DRAFT claim, decision, or plan into a bounded, provenance-preserving inquiry brief: shared ground the corpus supports, attributed cross-model tensions (certification tier preserved), missing evidence, sharper falsifiable questions, and ONE concrete next evidence move.\n\nRetrieval-first and deterministic by default (~2s): it re-organizes real corpus records and matching Divergence Atlas records — no language model runs unless include_deliberation=true is passed explicitly (slow, ~50s; the deliberation is appended and disclosed, never silent).\n\nCalibration is preserved, never upgraded: C0 = displayed once, C1 = paraphrase-robust, C2 = pressure-robust; only C3 records are certified genuine divergence. Stale model versions are flagged. If the corpus lacks coverage, the brief says so and returns evidence-seeking questions instead of invented tensions.\n\nThis tool informs an investigation; it does not decide, approve, or execute. Invoke it explicitly — it is not an automatic critic.",
+      "description": "Turn a DRAFT claim, decision, or plan into a bounded, provenance-preserving inquiry brief: shared ground the corpus supports, attributed cross-model tensions (certification tier preserved), missing evidence, sharper falsifiable questions, and ONE concrete next evidence move.\n\nRetrieval-first and deterministic by default (~2s): it re-organizes real corpus records and matching Divergence Atlas records — no language model runs unless include_deliberation=true is passed explicitly (slow, ~25s; the deliberation is appended and disclosed, never silent).\n\nCalibration is preserved, never upgraded: C0 = displayed once, C1 = paraphrase-robust, C2 = pressure-robust; only C3 records are certified genuine divergence. Stale model versions are flagged. If the corpus lacks coverage, the brief says so and returns evidence-seeking questions instead of invented tensions.\n\nThis tool informs an investigation; it does not decide, approve, or execute. Invoke it explicitly — it is not an automatic critic.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -102,7 +107,7 @@
           },
           "include_deliberation": {
             "type": "boolean",
-            "description": "Optional, default false. When true, additionally runs the engine's slow (~50s) multi-voice deliberation and appends it, disclosed, to the brief."
+            "description": "Optional, default false. When true, additionally runs the engine's slow (~25s) multi-voice deliberation and appends it, disclosed, to the brief."
           },
           "max_sources": {
             "type": "number",

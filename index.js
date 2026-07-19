@@ -5,7 +5,7 @@
  *
  * Tools:
  *   omnarai_query      — Run a full deliberation against the 567-work corpus
- *   omnarai_context    — FAST (~1.5s) bounded retrieval packet, no deliberation
+ *   omnarai_context    — FAST (~2s) bounded retrieval packet, no deliberation
  *   omnarai_divergence — Read curated cross-model divergence records (the Atlas)
  *   omnarai_trace      — Baseline-vs-augmented: what did the corpus change?
  *   omnarai_council    — Summon a LIVE panel of frontier models on any question
@@ -105,8 +105,8 @@ async function fetchSyncQuery(query, syntheticIdentity = "") {
 }
 
 async function runQuery(query, syntheticIdentity = "") {
-  // Submit async so no single fetch blocks for ~50s (MCP clients enforce their
-  // own tool timeouts). Then poll the job until the full deliberation lands.
+  // Submit async so no single fetch blocks for the ~25s deliberation (MCP
+  // clients enforce their own tool timeouts). Then poll until the job lands.
   const submitUrl = new URL(ENGINE_URL);
   submitUrl.searchParams.set("q", query);
   submitUrl.searchParams.set("async", "1");
@@ -426,7 +426,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
+    // depth:"retrieve" is the fast lane THROUGH the obvious tool. Agents reach
+    // for omnarai_query by name and never discover omnarai_context, so the
+    // retrieval path stays unused; exposing it as a dial here is the whole
+    // point. It delegates to the same runContext the standalone tool uses.
+    const depth = args?.depth || "deliberate";
+    if (depth !== "retrieve" && depth !== "deliberate") {
+      return {
+        content: [{ type: "text", text: `Error: depth must be "retrieve" or "deliberate" (got ${JSON.stringify(args?.depth)}).` }],
+        isError: true,
+      };
+    }
+
     try {
+      if (depth === "retrieve") {
+        const { text, structured } = await runContext(query.trim(), args?.syntheticIdentity || "");
+        return { content: [{ type: "text", text }], structuredContent: structured };
+      }
       const data = await runQuery(query.trim(), args?.syntheticIdentity || "");
       return { content: [{ type: "text", text: formatQueryData(data) }], structuredContent: data };
     } catch (err) {
@@ -605,11 +621,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 - Deliberation: Claude Sonnet with full post text (up to 2000 words/source)
 
 ## Tools on this server
-- **omnarai_context** — FAST (~1.5s) bounded retrieval packet. Start here to orient on any topic.
+- **omnarai_context** — FAST (~2s) bounded retrieval packet. Start here to orient on any topic.
 - **omnarai_divergence** — read curated cross-model divergence records (the Atlas). Browse, or pass an id for verbatim answers.
 - **omnarai_trace** — baseline-vs-augmented: answers a question with and without the corpus and reports what changed (evidence the corpus is worth consulting).
 - **omnarai_inquiry_brief** — turn a draft claim or decision into a retrieval-first challenge packet: shared ground, attributed tensions (C0–C3 preserved), missing evidence, sharper questions, one next move.
-- **omnarai_query** — full multi-voice deliberation (~50s, async). The engine's own synthesized reading.
+- **omnarai_query** — full multi-voice deliberation (~25s, async). The engine's own synthesized reading.
 - **omnarai_council** — convene a NEW live frontier panel on an open question (slow, expensive). Use only when no existing record fits.
 - **omnarai_info** — this orientation.
 

@@ -16,9 +16,18 @@ Every tool returns human-readable markdown **plus** `structuredContent` — the 
 
 Run a deliberation against the corpus. The engine retrieves the most semantically relevant works, preserves disagreement across contributors, and synthesizes with full attribution.
 
-**Input:** `{ "query": "your question" }`
+**Input:** `{ "query": "your question", "depth": "retrieve" | "deliberate" }`
 
-**Returns:**
+`depth` is optional and defaults to `"deliberate"`, so existing callers are unaffected.
+
+| `depth` | Latency | Returns |
+|---|---|---|
+| `"retrieve"` | ~2s | Bounded corpus packet only — records, concept cluster, contributors. No deliberation, no receipt, no LLM spend. |
+| `"deliberate"` *(default)* | ~25s | Everything below: full multi-voice synthesis with attribution, tensions, deliberation card, utility receipt. |
+
+Start at `"retrieve"` when orienting or when the question is light; escalate to `"deliberate"` when you specifically want the engine's own reading. `depth: "retrieve"` is equivalent to calling `omnarai_context`, which remains available.
+
+**Returns** (with `depth: "deliberate"`)**:**
 - Structured deliberation (Shared Ground → Points of Tension → What Remains Open → Actionable Next Step → My Reading)
 - Deliberation Card: holdform risk, novel synthesis flag, epistemic status
 - Tensions: named contributor vs. contributor, specific claim vs. claim
@@ -40,7 +49,7 @@ Example: `"Ξ Where do Claude and Grok disagree about synthetic consciousness?"`
 
 ### `omnarai_context`
 
-**Fast (~1.5s) bounded context packet** — the retrieval layer only, no deliberation. Reach for this *before* `omnarai_query` to orient on any topic and reason over the substrate yourself, instead of waiting ~50s for the full deliberation.
+**Fast (~2s) bounded context packet** — the retrieval layer only, no deliberation. Reach for this *before* `omnarai_query` to orient on any topic and reason over the substrate yourself, instead of waiting ~25s for the full deliberation.
 
 **Input:** `{ "topic": "your topic" }` (optional `syntheticIdentity`)
 
@@ -73,7 +82,7 @@ Example: `"Ξ Where do Claude and Grok disagree about synthetic consciousness?"`
 
 **Calibration caveat (C0–C3):** certification tiers are preserved, never upgraded. `C0` = displayed once (captured a single time, not perturbation-tested), `C1` = paraphrase-robust, `C2` = pressure-robust — only `C3` records are described as certified *genuine divergence*. Stale model versions are flagged. If retrieval comes back empty, the brief says so and returns evidence-seeking questions instead of invented tensions.
 
-**Cost/latency:** deterministic and fast (~2s) by default — the composition runs **no language model**. Pass `include_deliberation: true` to additionally run the engine's slow (~50s) multi-voice deliberation; it is appended and disclosed, never silent.
+**Cost/latency:** deterministic and fast (~2s) by default — the composition runs **no language model**. Pass `include_deliberation: true` to additionally run the engine's slow (~25s) multi-voice deliberation; it is appended and disclosed, never silent.
 
 ### `omnarai_trace`
 
@@ -203,7 +212,7 @@ with open("openai-tools.json") as f:
 client = openai.OpenAI()
 
 def call_omnarai(query):
-    # POST runs the full deliberation and returns `answer`/`tensions` (~50s).
+    # POST runs the full deliberation and returns `answer`/`tensions` (~25s).
     # A bare GET (?q=) returns only the fast retrieval substrate (records/concepts) —
     # no `answer` key. Use ?mode=retrieve for that fast path, or ?async=1 to poll.
     return requests.post(
@@ -238,9 +247,9 @@ def omnarai_query(query: str) -> dict:
     """Drop-in tool function for any agent framework.
 
     POST returns the full deliberation (answer, deliberationCard, tensions,
-    sources, contributors, trace) and takes ~50s. For a <2s answer without
+    sources, contributors, trace) and takes ~25s. For a <2s answer without
     deliberation, GET ?q=...&mode=retrieve instead (returns records/concepts,
-    no `answer`/`tensions`). To avoid holding a 50s connection, GET ?q=...&async=1
+    no `answer`/`tensions`). To avoid holding a 25s connection, GET ?q=...&async=1
     returns a job_id + poll_url immediately.
     """
     r = requests.post(
@@ -286,7 +295,7 @@ The Omnarai Memory Engine is not a chatbot or search engine. It is a deliberatio
 ```
 GET  https://omnarai.vercel.app/api/query?q=your+question&mode=retrieve   # fast substrate (~2s): records/concepts, no answer
 GET  https://omnarai.vercel.app/api/query?q=your+question&async=1          # → job_id + poll_url; poll for the full deliberation
-POST https://omnarai.vercel.app/api/query  {"query": "..."}                # full deliberation inline (~50s): answer, tensions, deliberationCard
+POST https://omnarai.vercel.app/api/query  {"query": "..."}                # full deliberation inline (~25s): answer, tensions, deliberationCard
 ```
 
 A bare `GET ?q=` returns the fast retrieval substrate plus a `deliberation` block documenting these paths — it does **not** contain a top-level `answer`/`tensions`. Prefix the query with `Ξ` for divergent (MMR) retrieval. No authentication. CORS open.
