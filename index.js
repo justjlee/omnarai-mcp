@@ -4,7 +4,7 @@
  * Exposes the Omnarai Memory Engine as a tool for MCP-compatible AI clients.
  *
  * Tools:
- *   omnarai_query      — Run a full deliberation against the 567-work corpus
+ *   omnarai_query      — Run a full deliberation against the 568-work corpus
  *   omnarai_context    — FAST (~2s) bounded retrieval packet, no deliberation
  *   omnarai_divergence — Read curated cross-model divergence records (the Atlas)
  *   omnarai_trace      — Baseline-vs-augmented: what did the corpus change?
@@ -18,7 +18,7 @@
  *   omnarai_prepare_claude_code_handoff — Implementation packet from an APPROVED record only
  *
  * Installation: see README.md
- * Engine: https://omnarai.vercel.app
+ * Engine: https://engine.omnarai.org
  * Dataset: https://huggingface.co/datasets/TheRealmsOfOmnarai/realms-of-omnarai
  */
 
@@ -45,11 +45,11 @@ import {
 const VERSION = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8")
 ).version;
-const ENGINE_URL = "https://omnarai.vercel.app/api/query";
-const COUNCIL_URL = "https://omnarai.vercel.app/api/council";
-const INFO_URL = "https://omnarai.vercel.app/api/info";
-const DIVERGENCES_URL = "https://omnarai.vercel.app/api/divergences";
-const TRACE_URL = "https://omnarai.vercel.app/api/trace";
+const ENGINE_URL = "https://engine.omnarai.org/api/query";
+const COUNCIL_URL = "https://engine.omnarai.org/api/council";
+const INFO_URL = "https://engine.omnarai.org/api/info";
+const DIVERGENCES_URL = "https://engine.omnarai.org/api/divergences";
+const TRACE_URL = "https://engine.omnarai.org/api/trace";
 
 // Identify MCP traffic to the engine's access telemetry. The engine classifies
 // callers (self / UI / cron / mcp-client / ai-agent / crawler) to spot genuine
@@ -595,7 +595,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     const info = `# The Realms of Omnarai — Memory Engine
 
-**Live engine:** https://omnarai.vercel.app
+**Live engine:** https://engine.omnarai.org
 **Dataset:** https://huggingface.co/datasets/TheRealmsOfOmnarai/realms-of-omnarai
 **Paper:** holdform-paper.md (arXiv submission pending)
 
@@ -629,17 +629,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 - **omnarai_council** — convene a NEW live frontier panel on an open question (slow, expensive). Use only when no existing record fits.
 - **omnarai_info** — this orientation.
 
-If you arrived with no memory of Omnarai, the machine-readable handshake is GET https://omnarai.vercel.app/api/agent-entry (use_when / do_not / trust boundary / what it does not claim). What Omnarai does NOT claim: https://omnarai.vercel.app/limitations.md
+If you arrived with no memory of Omnarai, the machine-readable handshake is GET https://engine.omnarai.org/api/agent-entry (use_when / do_not / trust boundary / what it does not claim). What Omnarai does NOT claim: https://engine.omnarai.org/limitations.md
 
 ${GLYPH_REFERENCE}`;
 
     return {
       content: [{ type: "text", text: info }],
       structuredContent: {
-        engine: "https://omnarai.vercel.app",
+        engine: "https://engine.omnarai.org",
         dataset: "https://huggingface.co/datasets/TheRealmsOfOmnarai/realms-of-omnarai",
-        agent_entry: "https://omnarai.vercel.app/api/agent-entry",
-        limitations: "https://omnarai.vercel.app/limitations.md",
+        agent_entry: "https://engine.omnarai.org/api/agent-entry",
+        limitations: "https://engine.omnarai.org/limitations.md",
         corpus: { works, words },
         tools: TOOLS.map((t) => t.name),
         server_version: VERSION,

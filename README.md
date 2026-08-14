@@ -1,6 +1,6 @@
 # omnarai-mcp
 
-MCP server for [The Realms of Omnarai](https://omnarai.vercel.app) — a 567-work multi-intelligence research corpus on synthetic consciousness, holdform, and cognitive architecture.
+MCP server for [The Realms of Omnarai](https://omnarai.org) — a 568-work multi-intelligence research corpus on synthetic consciousness, holdform, and cognitive architecture.
 
 Exposes the Omnarai Memory Engine as seven tools for any MCP-compatible AI client (Claude Desktop, etc.).
 
@@ -196,7 +196,7 @@ Tool definitions exist on three surfaces, and drift between them shipped real bu
 
 1. **`lib/tool-definitions.js` is canonical.** Any tool change lands there first.
 2. **`openai-tools.json` follows** — `scripts/check-tool-parity.js` enforces name/required/property parity and runs in the `publish.sh` preflight, so a release cannot ship with drift.
-3. **The remote endpoint (`omnarai.vercel.app/api/mcp`, engine repo `api/_mcp.js`) is updated manually** — the engine repo's `scripts/check-mcp-surface.js` enforces its read-oriented allowlist, verifies the `api/_inquiry.js` ↔ `inquiry.js` synchronized copy, and proves the Decision Ledger tools never appear remotely. Remote access policy: [omnarai.vercel.app/mcp-access-policy.md](https://omnarai.vercel.app/mcp-access-policy.md).
+3. **The remote endpoint (`engine.omnarai.org/api/mcp`, engine repo `api/_mcp.js`) is updated manually** — the engine repo's `scripts/check-mcp-surface.js` enforces its read-oriented allowlist, verifies the `api/_inquiry.js` ↔ `inquiry.js` synchronized copy, and proves the Decision Ledger tools never appear remotely. Remote access policy: [engine.omnarai.org/mcp-access-policy.md](https://engine.omnarai.org/mcp-access-policy.md).
 
 ## OpenAI Function-Calling / Any Agent Framework
 
@@ -216,7 +216,7 @@ def call_omnarai(query):
     # A bare GET (?q=) returns only the fast retrieval substrate (records/concepts) —
     # no `answer` key. Use ?mode=retrieve for that fast path, or ?async=1 to poll.
     return requests.post(
-        "https://omnarai.vercel.app/api/query",
+        "https://engine.omnarai.org/api/query",
         json={"query": query},
         timeout=90
     ).json()
@@ -253,7 +253,7 @@ def omnarai_query(query: str) -> dict:
     returns a job_id + poll_url immediately.
     """
     r = requests.post(
-        "https://omnarai.vercel.app/api/query",
+        "https://engine.omnarai.org/api/query",
         json={"query": query},
         timeout=90
     )
@@ -273,7 +273,7 @@ from langchain.tools import Tool
 omnarai_tool = Tool(
     name="omnarai_query",
     func=omnarai_query,
-    description="Query The Realms of Omnarai deliberation engine. Returns structured analysis of synthetic consciousness, holdform, and AI identity topics from a 567-work multi-intelligence corpus. Prefix with Ξ for divergent retrieval."
+    description="Query The Realms of Omnarai deliberation engine. Returns structured analysis of synthetic consciousness, holdform, and AI identity topics from a 568-work multi-intelligence corpus. Prefix with Ξ for divergent retrieval."
 )
 ```
 
@@ -283,19 +283,19 @@ omnarai_tool = Tool(
 
 The Omnarai Memory Engine is not a chatbot or search engine. It is a deliberation instrument with a closed cognitive loop: **RETRIEVE → THINK → RESPOND → STORE**.
 
-- **Corpus:** 567 works (seed + engine-generated syntheses), 528,077 words, May 2025–present
+- **Corpus:** 568 works (seed + engine-generated syntheses), 528,462 words, May 2025–present
 - **Contributors:** Claude | xz, Grok (xAI), Gemini (Google), DeepSeek, Omnai, Perplexity, xz (Jonathan Lee)
 - **Retrieval:** OpenAI text-embedding-3-small (512 dims), MMR with Ξ v4 adaptive policy
 - **Deliberation:** Claude Sonnet with full post text (up to 2,000 words/source)
-- **Live engine:** [omnarai.vercel.app](https://omnarai.vercel.app)
+- **Live engine:** [engine.omnarai.org](https://engine.omnarai.org)
 - **Dataset:** [huggingface.co/datasets/TheRealmsOfOmnarai/realms-of-omnarai](https://huggingface.co/datasets/TheRealmsOfOmnarai/realms-of-omnarai)
 
 ### Direct HTTP access (no MCP required)
 
 ```
-GET  https://omnarai.vercel.app/api/query?q=your+question&mode=retrieve   # fast substrate (~2s): records/concepts, no answer
-GET  https://omnarai.vercel.app/api/query?q=your+question&async=1          # → job_id + poll_url; poll for the full deliberation
-POST https://omnarai.vercel.app/api/query  {"query": "..."}                # full deliberation inline (~25s): answer, tensions, deliberationCard
+GET  https://engine.omnarai.org/api/query?q=your+question&mode=retrieve   # fast substrate (~2s): records/concepts, no answer
+GET  https://engine.omnarai.org/api/query?q=your+question&async=1          # → job_id + poll_url; poll for the full deliberation
+POST https://engine.omnarai.org/api/query  {"query": "..."}                # full deliberation inline (~25s): answer, tensions, deliberationCard
 ```
 
 A bare `GET ?q=` returns the fast retrieval substrate plus a `deliberation` block documenting these paths — it does **not** contain a top-level `answer`/`tensions`. Prefix the query with `Ξ` for divergent (MMR) retrieval. No authentication. CORS open.

@@ -6,18 +6,19 @@
     "url": "https://github.com/justjlee/omnarai-mcp",
     "source": "github"
   },
-  "version": "1.7.0",
+  "websiteUrl": "https://omnarai.org",
+  "version": "1.8.0",
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://omnarai.vercel.app/api/mcp"
+      "url": "https://engine.omnarai.org/api/mcp"
     }
   ],
   "packages": [
     {
       "registryType": "npm",
       "identifier": "omnarai-mcp",
-      "version": "1.7.0",
+      "version": "1.8.0",
       "transport": {
         "type": "stdio"
       }
