@@ -4,7 +4,7 @@
  * Exposes the Omnarai Memory Engine as a tool for MCP-compatible AI clients.
  *
  * Tools:
- *   omnarai_query      — Run a full deliberation against the 568-work corpus
+ *   omnarai_query      — Run a full deliberation against the 573-work corpus
  *   omnarai_context    — FAST (~2s) bounded retrieval packet, no deliberation
  *   omnarai_divergence — Read curated cross-model divergence records (the Atlas)
  *   omnarai_trace      — Baseline-vs-augmented: what did the corpus change?
