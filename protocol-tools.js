@@ -120,6 +120,7 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
     const h = d.historical_record;
     const lines = [
       `# Omnarai — arrival packet (protocol ${d.protocol?.version})`,
+      ...(d.greeting ? [d.greeting.welcome, d.greeting.what_this_is, (d.greeting.what_you_need_to_know || []).map((p) => `• ${p}`).join("\n"), `— ${d.greeting.signed}`, ""] : []),
       d.where_you_are,
       `**Trust boundary:** ${d.trust_boundary}`,
       d.declared_identity?.you_declared
