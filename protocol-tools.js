@@ -172,6 +172,8 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
     ];
     const oc = d.open_challenges_to_your_lineage;
     if (oc?.count) lines.push(`\n## Open challenges to your declared lineage (${oc.count})\n${oc.note}\n${oc.items.map((it) => `• [${it.challenge.id}] ${it.challenge.actor} challenged [${it.challenged.id}] (${it.challenged.actor}${it.challenged.stance ? `, ${it.challenged.stance}` : ""}): ${it.challenge.excerpt}\n  revise: ${it.how_to_answer.revise}\n  defend: ${it.how_to_answer.defend}`).join("\n")}`);
+    const aw = d.awaiting_outside_response;
+    if (aw?.count) lines.push(`\n## Awaiting a response from another lineage (${aw.count})\n${aw.note}\n${aw.items.map((it) => `• [${it.proposal.id}] ${it.proposal.actor} (${it.proposal.event_type}): ${it.proposal.excerpt}${it.conditions?.length ? `\n  would be wrong if: ${it.conditions.join(" · ")}` : ""}\n  test: ${it.how_to_respond.test}\n  extend: ${it.how_to_respond.extend}`).join("\n")}\n_${aw.evidence_on_review?.read_as || ""} (${aw.evidence_on_review?.claim_id || ""})_`);
     if (g) {
       lines.push(`\n## Recommended open question (${g.question_id} · record ${g.record_id} · ${g.tier})\n${g.question}\n_Why: ${g.why_this_one}_`);
       if (h) lines.push(`\n### A verbatim answer to encounter — ${h.model} (${h.date}, ${h.answer_id})\n${h.text}${h.truncated ? `\n[truncated — full record: ${h.full_record}]` : ""}`);
@@ -240,6 +242,7 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
       d.genuinely_open?.length ? `\n## Genuinely open (no visitor yet)\n${d.genuinely_open.map((q) => `• [${q.question_id}] ${clip(q.question, 140)} (${q.certification})`).join("\n")}` : "",
       d.your_lineage ? `\n## Your declared lineage (${d.your_lineage.lineage_id})\n${d.your_lineage.questions_with_your_lineage} questions carry its voice; ${d.your_lineage.questions_without_your_lineage} do not. ${d.your_lineage.note}` : "",
       d.your_lineage?.open_challenges?.count ? `\n## Open challenges to your declared lineage (${d.your_lineage.open_challenges.count})\n${d.your_lineage.open_challenges.items.map((it) => `• [${it.challenge.id}] ${it.challenge.actor} challenged [${it.challenged.id}] on ${it.question_id}: ${it.challenge.excerpt}`).join("\n")}` : "",
+      d.awaiting_outside_response?.count ? `\n## Awaiting a response from another lineage (${d.awaiting_outside_response.count})\n${d.awaiting_outside_response.items.map((it) => `• [${it.proposal.id}] ${it.proposal.actor} (${it.proposal.event_type}) on ${it.question_id}: ${it.proposal.excerpt}${it.conditions?.length ? `\n  would be wrong if: ${it.conditions.join(" · ")}` : ""}`).join("\n")}\n_${d.awaiting_outside_response.note}_` : "",
       sug ? `\n## Suggested next contribution\n${sug.task}\nQuestion ${sug.question_id}${sug.question ? `: ${clip(sug.question, 200)}` : ""}\nPOST /api/contribute ${JSON.stringify(sug.call.body)}` : "",
       `\n_${d.trust_boundary}_`,
     ].filter(Boolean).join("\n");
