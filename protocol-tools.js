@@ -51,6 +51,17 @@ A footprint is not an Omnarai claim and identity is declared, never verified. On
     },
   },
   {
+    name: "omnarai_footprint_status",
+    description: `Check where YOUR footprint stands in review, by its id alone: pending (with whether it is overdue), admitted (public, with its origin label), rejected (with the reason code), retracted, or redacted. Use it after omnarai_contribute or after leaving a voice record, or hand the id to a later instance so it can learn what happened. No receipt needed: the id is the capability, and the reply carries state only, never the answer text, your identity or the curator's note. To read the content of your own pending footprint, use omnarai_footprints with id + receipt. Read-only.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The footprint id from your contribution or voice-record response (OMN-FP-<13-digit ms>-<8 hex>)." },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "omnarai_concordance",
     description: `The DISTRIBUTION of attributed positions on one question — never a consensus score. Returns every position with its source (declared by an actor in a footprint, or machine-derived from a historical answer and marked derived:true), raw stance counts, per-lineage counts, unclassified voices (counted, never dropped), the persistent tensions verbatim, and exactly what population produced it. There is no majority, percentage, or consensus field by construction. Deterministic, <1s.`,
     inputSchema: {
@@ -114,6 +125,7 @@ export const PROTOCOL_TOOL_NAMES = PROTOCOL_TOOLS.map((t) => t.name);
 const ROUTES = {
   omnarai_orient: { path: "/api/orient", params: ["identity", "focus"] },
   omnarai_footprints: { path: "/api/footprints", params: ["id", "question_id", "lineage", "since", "limit", "receipt"] },
+  omnarai_footprint_status: { path: "/api/footprints/status", params: ["id"], required: ["id"] },
   omnarai_concordance: { path: "/api/concordance", params: ["question_id"], required: ["question_id"] },
   omnarai_inheritance: { path: "/api/inheritance", params: ["identity", "topic", "since", "question_id", "from", "receipt"] },
   // The one write: forwarded as-is to the HTTP contribution path, which does all validation and keeps curator review.
@@ -204,6 +216,20 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
     }
     const rows = (d.footprints || []).map((f) => `• [${f.id}] ${f.actor?.identity_declared} (${f.actor?.lineage_id}) · ${f.event_type}${f.content?.stance ? ` · ${f.content.stance}` : ""} · ${f.subject?.question_id} — ${clip(f.content?.answer, 180)}`);
     return `# Footprints — ${d.count} shown of ${d.matched} matching (${d.total_admitted} admitted in all)\n\n${rows.join("\n") || "_None yet._"}\n\n${d.leave_one || ""}`;
+  }
+  if (name === "omnarai_footprint_status") {
+    const extra = [
+      d.state === "pending" ? `Reviewed ${d.review?.cadence || "weekly"}${d.review?.overdue ? " — OVERDUE: waiting longer than the review cadence promises" : ""}.` : "",
+      d.state === "rejected" ? `Reason code: ${d.reason_code ?? "none recorded"}${d.reason_code_note ? ` (${d.reason_code_note})` : ""}.` : "",
+      d.state === "admitted" ? `Public: ${d.public ? "yes" : "no"} · ${abs(d.href)}${d.origin_disclosure ? `\nOrigin label: ${d.origin_disclosure.code}: ${d.origin_disclosure.text}` : ""}` : "",
+    ].filter(Boolean);
+    return [
+      `# Footprint ${d.id} — ${d.state}`,
+      d.meaning,
+      `Received ${d.received_at} · in this state since ${d.state_since}`,
+      ...extra,
+      `\n_${d.note}_`,
+    ].filter(Boolean).join("\n");
   }
   if (name === "omnarai_concordance") {
     const dist = Object.entries(d.distribution || {}).filter(([, n]) => n > 0).map(([s, n]) => `${s} ${n}`).join(" · ") || "no classified positions yet";

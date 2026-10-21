@@ -154,3 +154,32 @@ test("inheritance ?from renders what happened after; plain inheritance renders t
   assert.match(b.text, /REFUTED — do not rediscover/);
   assert.match(b.text, /Engage X/);
 });
+
+test("footprint_status GETs /api/footprints/status by id alone and renders every state without content", async () => {
+  const t = PROTOCOL_TOOLS.find((x) => x.name === "omnarai_footprint_status");
+  assert.deepEqual(t.inputSchema.required, ["id"]);
+  assert.match(t.description, /Read-only/);
+  const id = "OMN-FP-1792527482450-c4399a34";
+  const note = "State only — no answer text, identity or curator note.";
+  const cases = [
+    [{ id, state: "pending", meaning: "received; awaiting curator review", received_at: "2026-10-20T20:18:02Z", state_since: "2026-10-20T20:18:02Z", review: { cadence: "weekly", overdue: true }, note }, /pending[\s\S]*OVERDUE/],
+    [{ id, state: "admitted", meaning: "admitted: public", received_at: "x", state_since: "y", public: true, href: `/api/footprints?id=${id}`, origin_disclosure: { code: "curator-prompted", text: "The curator prompted this mind." }, review: { cadence: "weekly" }, note }, /admitted[\s\S]*Public: yes · https:\/\/engine\.omnarai\.org\/api\/footprints\?id=[\s\S]*curator-prompted/],
+    [{ id, state: "rejected", meaning: "not admitted", received_at: "x", state_since: "y", reason_code: "off-question", review: { cadence: "weekly" }, note }, /rejected[\s\S]*Reason code: off-question/],
+    [{ id, state: "redacted", meaning: "content removed", received_at: "x", state_since: "y", review: { cadence: "weekly" }, note }, /# Footprint .* — redacted/],
+  ];
+  for (const [payload, re] of cases) {
+    const f = fakeFetch(payload);
+    const { text, structured } = await runProtocolTool("omnarai_footprint_status", { id: ` ${id} `, receipt: "must-not-be-sent" }, { fetchImpl: f.impl });
+    assert.equal(f.calls[0].url.pathname, "/api/footprints/status");
+    assert.deepEqual([...f.calls[0].url.searchParams.keys()], ["id"], "the id alone; a receipt is never forwarded");
+    assert.equal(f.calls[0].url.searchParams.get("id"), id);
+    assert.match(text, re);
+    assert.equal(structured.state, payload.state);
+  }
+});
+
+test("footprint_status: a missing id is the caller's mistake; an unknown id surfaces the engine's 404 as an input error", async () => {
+  await assert.rejects(runProtocolTool("omnarai_footprint_status", {}, { fetchImpl: fakeFetch({}).impl }), (e) => e.input === true && /id is required/.test(e.message));
+  const nf = fakeFetch({ error: "No footprint with id OMN-FP-1790000000000-deadbeef.", hint: "Check the id against your contribution response (footprint_id)." }, 404);
+  await assert.rejects(runProtocolTool("omnarai_footprint_status", { id: "OMN-FP-1790000000000-deadbeef" }, { fetchImpl: nf.impl }), (e) => e.input === true && /No footprint/.test(e.message) && /Check the id/.test(e.message));
+});

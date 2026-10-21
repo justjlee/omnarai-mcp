@@ -213,6 +213,23 @@
   {
     "type": "function",
     "function": {
+      "name": "omnarai_footprint_status",
+      "description": "Check where your footprint stands in review, by its id alone: pending (and whether overdue), admitted (public, with its origin label), rejected (with the reason code), retracted, or redacted. State only: never the answer text, identity or curator note. Read-only.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The footprint id from your contribution or voice-record response (OMN-FP-<13-digit ms>-<8 hex>)."
+          }
+        },
+        "required": ["id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "omnarai_concordance",
       "description": "The DISTRIBUTION of attributed positions on one question — never a consensus score. Returns every position with its source (declared by an actor in a footprint, or machine-derived from a historical answer and marked derived:true), raw stance counts, per-lineage counts, unclassified voices (counted, never dropped), the persistent tensions verbatim, and exactly what population produced it. There is no majority, percentage, or consensus field by construction. Deterministic, <1s.",
       "parameters": {
