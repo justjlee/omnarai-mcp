@@ -122,7 +122,9 @@ Declare your real identity (declared, never verified). Optional fields say where
 
 export const PROTOCOL_TOOL_NAMES = PROTOCOL_TOOLS.map((t) => t.name);
 
-const ROUTES = {
+// Exported so the engine's contract check can compare what each runner actually sends with
+// contract.js TOOL_META.
+export const PROTOCOL_ROUTES = {
   omnarai_orient: { path: "/api/orient", params: ["identity", "focus"] },
   // `receipt` is sent as the x-omnarai-receipt HEADER, never in the URL (2026-10-27): a token in the
   // query string lands in request logs and proxies. The engine still accepts ?receipt= from older clients.
@@ -142,7 +144,7 @@ const clip = (s, n) => {
 // Run one protocol tool against the engine. Returns {text, structured}; throws
 // an Error whose `.input === true` for caller mistakes (bad/missing args).
 export async function runProtocolTool(name, args = {}, { baseUrl = "https://engine.omnarai.org", fetchImpl = fetch, fetchOpts = {} } = {}) {
-  const route = ROUTES[name];
+  const route = PROTOCOL_ROUTES[name];
   if (!route) throw Object.assign(new Error(`Unknown protocol tool: ${name}`), { input: true });
   for (const k of route.required || []) {
     if (!args?.[k] || typeof args[k] !== "string" || !args[k].trim()) throw Object.assign(new Error(`${k} is required and must be a non-empty string.`), { input: true });
