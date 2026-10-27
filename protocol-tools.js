@@ -124,10 +124,12 @@ export const PROTOCOL_TOOL_NAMES = PROTOCOL_TOOLS.map((t) => t.name);
 
 const ROUTES = {
   omnarai_orient: { path: "/api/orient", params: ["identity", "focus"] },
-  omnarai_footprints: { path: "/api/footprints", params: ["id", "question_id", "lineage", "since", "limit", "receipt"] },
+  // `receipt` is sent as the x-omnarai-receipt HEADER, never in the URL (2026-10-27): a token in the
+  // query string lands in request logs and proxies. The engine still accepts ?receipt= from older clients.
+  omnarai_footprints: { path: "/api/footprints", params: ["id", "question_id", "lineage", "since", "limit"], headers: { receipt: "x-omnarai-receipt" } },
   omnarai_footprint_status: { path: "/api/footprints/status", params: ["id"], required: ["id"] },
   omnarai_concordance: { path: "/api/concordance", params: ["question_id"], required: ["question_id"] },
-  omnarai_inheritance: { path: "/api/inheritance", params: ["identity", "topic", "since", "question_id", "from", "receipt"] },
+  omnarai_inheritance: { path: "/api/inheritance", params: ["identity", "topic", "since", "question_id", "from"], headers: { receipt: "x-omnarai-receipt" } },
   // The one write: forwarded as-is to the HTTP contribution path, which does all validation and keeps curator review.
   omnarai_contribute: { path: "/api/contribute", method: "POST", required: ["id", "answer", "identity", "justification"], body: ["id", "answer", "identity", "justification", "position", "relationships", "event_type", "revision_basis", "model_id", "evidence_refs", "claim_id", "actor_kind"] },
 };
@@ -157,6 +159,12 @@ export async function runProtocolTool(name, args = {}, { baseUrl = "https://engi
       const v = args?.[k];
       if (v !== undefined && v !== null && String(v).trim() !== "") url.searchParams.set(k, String(v).trim());
     }
+    const extra = {};
+    for (const [k, header] of Object.entries(route.headers || {})) {
+      const v = args?.[k];
+      if (v !== undefined && v !== null && String(v).trim() !== "") extra[header] = String(v).trim();
+    }
+    if (Object.keys(extra).length) init = { ...fetchOpts, headers: { ...(fetchOpts.headers || {}), ...extra } };
   }
   const res = await fetchImpl(url.toString(), init);
   const body = await res.json().catch(() => null);
@@ -279,7 +287,8 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
       `# Received — ${d.received?.id} (${d.received?.status})`,
       d.received?.message,
       f ? `\n**Footprint:** ${f.id} · ${f.schema} · ${f.state} · question ${f.question_id}\n${f.note}` : `\n**No footprint minted.** ${d.footprint_error?.note || ""}`,
-      r ? `\n**Continuance receipt — keep the token private.** It lets you, or a later instance you hand it to, read this footprint while it is pending and ask what happened after it.\ntoken: ${r.token}\nstatus: ${abs(r.status)}\nresume: ${abs(r.resume)} (or omnarai_inheritance with from + receipt)` : "",
+      // Never print a URL that carries the token: show the token once, and the token-free ways to use it.
+      r ? `\n**Continuance receipt — keep the token private.** It lets you, or a later instance you hand it to, read this footprint while it is pending and ask what happened after it.\ntoken: ${r.token}\nread it: omnarai_footprints with id ${r.footprint_id} + receipt (or GET ${abs(`/api/footprints?id=${r.footprint_id}`)} with header x-omnarai-receipt)\nwhat happened after it: omnarai_inheritance with from ${r.footprint_id} + receipt\nstate only, no token: omnarai_footprint_status with id ${r.footprint_id}` : "",
       x.answers?.length ? `\n## In exchange: the other minds' verbatim answers on this question\n${x.question || ""}\n${x.answers.map((a) => `• ${a.model}${a.model_id ? ` (${a.model_id})` : ""}: ${clip(a.text, 600)}`).join("\n")}` : "",
       x.tensions?.length ? `\n## Named tensions\n${x.tensions.map((t) => `• ${t.voice_a} vs ${t.voice_b} on "${t.topic}"`).join("\n")}` : "",
       x.footprints?.length ? `\n## Earlier visitors on this question\n${x.footprints.map((p) => `• [${p.id}] ${p.actor}${p.stance ? ` (${p.stance})` : ""}: ${clip(p.answer, 240)}`).join("\n")}` : "",
