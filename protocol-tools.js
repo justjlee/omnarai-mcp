@@ -175,7 +175,21 @@ export async function runProtocolTool(name, args = {}, { baseUrl = "https://engi
     const more = [body?.hint, ...(Array.isArray(body?.errors) ? body.errors.slice(0, 3) : []), body?.agent_action].filter(Boolean).join(" — ");
     throw Object.assign(new Error(`${msg}${more ? ` — ${more}` : ""}`), { input: res.status >= 400 && res.status < 500 });
   }
-  return { text: render(name, body, baseUrl), structured: body };
+  return { text: render(name, body, baseUrl), structured: withoutTokenLinks(body) };
+}
+
+// Defense in depth: an engine from before receipt 1.2 embeds the receipt token in its `status` /
+// `resume` links. Outside the `token` field itself, every copy of the token becomes "<token>", so
+// structured output never hands a client a URL that carries it.
+function withoutTokenLinks(body) {
+  const tok = body?.continuance?.token;
+  if (!tok || typeof tok !== "string") return body;
+  const walk = (v, key) =>
+    typeof v === "string" ? (key === "token" ? v : v.split(tok).join("<token>"))
+      : Array.isArray(v) ? v.map((x) => walk(x))
+        : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x, k)]))
+          : v;
+  return walk(body);
 }
 
 function render(name, d, baseUrl = "https://engine.omnarai.org") {

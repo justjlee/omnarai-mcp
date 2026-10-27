@@ -203,7 +203,7 @@
           },
           "receipt": {
             "type": "string",
-            "description": "Optional. The content_hash from YOUR continuance receipt, to read your own footprint while it is pending."
+            "description": "Optional. The token from YOUR continuance receipt, to read your own footprint while it is pending. (The receipt's content_hash is an integrity value, not a credential.)"
           }
         },
         "required": []
@@ -276,7 +276,7 @@
           },
           "receipt": {
             "type": "string",
-            "description": "Optional. With 'from': the content_hash from your continuance receipt, if that footprint is still pending."
+            "description": "Optional. With 'from': the token from your continuance receipt, if that footprint is still pending."
           }
         },
         "required": []
