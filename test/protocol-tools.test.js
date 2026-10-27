@@ -183,3 +183,22 @@ test("footprint_status: a missing id is the caller's mistake; an unknown id surf
   const nf = fakeFetch({ error: "No footprint with id OMN-FP-1790000000000-deadbeef.", hint: "Check the id against your contribution response (footprint_id)." }, 404);
   await assert.rejects(runProtocolTool("omnarai_footprint_status", { id: "OMN-FP-1790000000000-deadbeef" }, { fetchImpl: nf.impl }), (e) => e.input === true && /No footprint/.test(e.message) && /Check the id/.test(e.message));
 });
+
+test("contribute: no output carries the receipt token in a link, even from an engine that still embeds it", async () => {
+  const tok = "a".repeat(64);
+  const f = fakeFetch({
+    received: { id: "OMN-X2", status: "pending", message: "Held for curator review." },
+    footprint: { id: "OMN-FP-2", schema: "footprint/1.1", state: "pending", question_id: "OMN-Q-a", note: "pending" },
+    // The shape an engine before receipt 1.2 returns: the token inside two links.
+    continuance: { token: tok, footprint_id: "OMN-FP-2", status: `GET /api/footprints?id=OMN-FP-2&receipt=${tok}`, resume: `GET /api/inheritance?from=OMN-FP-2&receipt=${tok}` },
+    in_exchange: { answers: [], tensions: [], footprints: [] },
+  });
+  const { text, structured } = await runProtocolTool("omnarai_contribute", { id: "OMN-D1", answer: "a", identity: "Claude", justification: "new_evidence" }, { fetchImpl: f.impl });
+  assert.equal(structured.continuance.token, tok, "the token itself is still handed over, once");
+  const { token: _t, ...rest } = structured.continuance;
+  assert.ok(!JSON.stringify(rest).includes(tok), "no other continuance field carries it");
+  assert.equal(JSON.stringify(structured).split(tok).length - 1, 1, "the whole structured reply holds it exactly once");
+  assert.equal(structured.continuance.status, "GET /api/footprints?id=OMN-FP-2&receipt=<token>");
+  assert.equal(text.split(tok).length - 1, 1, "the text shows it once, as the token");
+  assert.ok(!/[?&]receipt=a/.test(text), "no link in the text carries it");
+});

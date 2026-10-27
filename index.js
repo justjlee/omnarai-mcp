@@ -39,6 +39,7 @@ import { runInquiryBrief, searchDivergenceIndex } from "./inquiry.js";
 import { runProtocolTool, PROTOCOL_TOOL_NAMES } from "./protocol-tools.js";
 import { formatRingsLine, formatContributorsLine, FALLBACK_WORKS, FALLBACK_WORDS } from "./lib/info-format.js";
 import { ENGINE_TOOLS, DECISION_TOOLS } from "./lib/tool-definitions.js";
+import { CONTRACT_VERSION } from "./contract.js";
 import { createDecisionStore } from "./lib/decision-store.js";
 import {
   runCreateDecisionRecord,
@@ -666,6 +667,7 @@ ${GLYPH_REFERENCE}`;
         corpus: { works, words },
         tools: TOOLS.map((t) => t.name),
         server_version: VERSION,
+        contract_version: CONTRACT_VERSION,
       },
     };
   }
