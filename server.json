@@ -7,7 +7,7 @@
     "source": "github"
   },
   "websiteUrl": "https://omnarai.org",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "remotes": [
     {
       "type": "streamable-http",
@@ -18,7 +18,7 @@
     {
       "registryType": "npm",
       "identifier": "omnarai-mcp",
-      "version": "1.11.0",
+      "version": "1.12.0",
       "transport": {
         "type": "stdio"
       }
