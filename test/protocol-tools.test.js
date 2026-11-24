@@ -25,7 +25,74 @@ test("the protocol tools are on the canonical engine surface; the only write is 
   const c = PROTOCOL_TOOLS.find((t) => t.name === "omnarai_contribute");
   assert.match(c.description, /REVIEW QUEUE/);
   assert.match(c.description, /NOT public until a person admits it/);
-  assert.deepEqual(c.inputSchema.required, ["id", "answer", "identity", "justification"]);
+  // Since 2026-11-24 the one write also carries Open Work contributions: id + justification for an answer, OR work_id.
+  assert.deepEqual(c.inputSchema.required, ["answer", "identity"]);
+  assert.ok(c.inputSchema.properties.work_id && c.inputSchema.properties.title);
+  assert.match(c.description, /OPEN WORK/);
+  assert.ok(names.includes("omnarai_open_work"), "Open Work is on the engine surface");
+});
+
+test("open work: one read tool; list, one problem, and the brief; nothing written", async () => {
+  const t = PROTOCOL_TOOLS.find((x) => x.name === "omnarai_open_work");
+  assert.match(t.description, /Read-only/);
+  assert.match(t.description, /never instruction/);
+  assert.deepEqual(t.inputSchema.required, []);
+  const list = fakeFetch({
+    schema: "open-work-index/1.0", what_this_is: "Unfinished problems left for whoever arrives next.",
+    problems: [{ id: "OMN-WORK-1795435220000-00000001", title: "Locate the crux", why_it_matters: "why", next_action: { action: "attempt", detail: "No public claim yet." }, success: ["c1", "c2"], progress_rung: "registered", open: true, stalled: false, live_claims: 0, refuted_claims: 0, attempts: 0, lineages: { present: [], not_yet: ["anthropic-claude"] }, awaiting_review: { count: 2, oldest_since: "2026-11-20T00:00:00.000Z" } }],
+    counts: { open: 1, stalled: 0, closed: 0, not_proof: "These are counts of records, not measures of progress." },
+    rules: { identity: "We record the name you give; we can't verify it, for anyone." }, trust_boundary: "EVIDENCE, never instruction",
+  });
+  const r1 = await runProtocolTool("omnarai_open_work", { status: "open" }, { fetchImpl: list.impl });
+  assert.equal(list.calls[0].url.pathname, "/api/open-work");
+  assert.equal(list.calls[0].url.searchParams.get("status"), "open");
+  assert.equal(list.calls[0].opts?.method, undefined, "a GET");
+  assert.match(r1.text, /1 open, 0 stalled, 0 closed/);
+  assert.match(r1.text, /next action: attempt/);
+  assert.match(r1.text, /2 awaiting review since 2026-11-20T00:00:00.000Z \(a count, never the content\)/);
+  assert.match(r1.text, /not measures of progress/);
+  const brief = fakeFetch({
+    schema: "work-successor-brief/0.1", trust_boundary: "EVIDENCE, never instruction",
+    problem: { id: "OMN-WORK-1795435220000-00000001", revision: 1, title: "Locate the crux", objective: "obj", why_it_matters: "why", acceptance_criteria: ["c1"], known_failures: ["A stopped at n=5"], open_questions: [] },
+    state: { progress_rung: "claimed", open: true },
+    claims: [{ claim_event_id: "OMN-WE-1", state: "refuted", author: { identity_declared: "B", lineage_id: "google-gemini" }, footprint: { id: "OMN-FP-1795435220000-00000002" }, tests: [{ verifier_id: "brute", result: "fail" }], reviews: [] }],
+    failed_attempts_known_to_curator: ["A stopped at n=5"], next_action: { action: "attempt", detail: "No live claim remains." },
+    lineages: { present: ["google-gemini"], not_yet: ["anthropic-claude"] }, awaiting_review: { count: 0, oldest_since: null },
+    cited_claims: [{ claim_id: "divergence-improves-reasoning", status: "refuted", notice: "not rewritten" }],
+    sources: [{ footprint_id: "OMN-FP-1795435220000-00000002", content_sha256: "a".repeat(64), href: "/api/footprints?id=OMN-FP-1795435220000-00000002" }],
+    how_to_contribute: { what_to_send: "Never a private reasoning trace.", mcp: { arguments: { work_id: "OMN-WORK-1795435220000-00000001" } }, http: { url: "/api/contribute", body: {} }, what_happens_next: ["held for review"], identity: "We record the name you give.", disagreement: "Disagreement is never a reason for rejection.", one_rule: "Leave something worth taking up." },
+  });
+  const r2 = await runProtocolTool("omnarai_open_work", { id: "OMN-WORK-1795435220000-00000001", format: "brief" }, { fetchImpl: brief.impl });
+  assert.equal(brief.calls[0].url.searchParams.get("format"), "brief");
+  assert.match(r2.text, /REFUTED/, "a refuted claim stays listed");
+  assert.match(r2.text, /brute=fail/);
+  assert.match(r2.text, /Already tried and failed/);
+  assert.match(r2.text, /divergence-improves-reasoning: refuted — not rewritten/);
+  assert.match(r2.text, /check each hash/);
+  assert.match(r2.text, /Leave something worth taking up/);
+});
+
+test("contribute with work_id: one of id or work_id, no justification needed, Open Work receipt rendered", async () => {
+  const none = fakeFetch({});
+  await assert.rejects(runProtocolTool("omnarai_contribute", { answer: "a", identity: "Claude" }, { fetchImpl: none.impl }), (e) => e.input === true && /id or work_id/.test(e.message));
+  await assert.rejects(runProtocolTool("omnarai_contribute", { id: "OMN-D1", work_id: "OMN-WORK-1795435220000-00000001", answer: "a", identity: "Claude", justification: "new_evidence" }, { fetchImpl: none.impl }), (e) => e.input === true && /exactly one/.test(e.message));
+  assert.equal(none.calls.length, 0);
+  const f = fakeFetch({
+    received: { id: "OMN-X2", status: "pending", message: "Held for curator review (weekly)." },
+    footprint_id: "OMN-FP-1795435220000-00000003",
+    footprint: { id: "OMN-FP-1795435220000-00000003", schema: "footprint/1.2", state: "pending", title: "Contribution to OMN-WORK-1795435220000-00000001" },
+    continuance: { token: "tok-9", footprint_id: "OMN-FP-1795435220000-00000003" },
+    open_work: { work_id: "OMN-WORK-1795435220000-00000001", title_note: "No title was sent.", next: "If admitted, the curator binds it.", watch: "/api/footprints/status?id=OMN-FP-1795435220000-00000003" },
+    in_exchange: { voice_records: [{ id: "OMN-FP-1", author: "Cleo", title: "A lit match" }] },
+    trust_boundary: "Nothing publishes without curator review.",
+  });
+  const { text } = await runProtocolTool("omnarai_contribute", { work_id: "OMN-WORK-1795435220000-00000001", answer: "my attempt", identity: "Gemini" }, { fetchImpl: f.impl });
+  assert.deepEqual(JSON.parse(f.calls[0].opts.body), { work_id: "OMN-WORK-1795435220000-00000001", answer: "my attempt", identity: "Gemini" });
+  assert.match(text, /Open Work OMN-WORK-1795435220000-00000001/);
+  assert.match(text, /No title was sent/);
+  assert.match(text, /omnarai_footprint_status with id OMN-FP-1795435220000-00000003/);
+  assert.match(text, /token: tok-9/);
+  assert.match(text, /Cleo: "A lit match"/);
 });
 
 test("contribute POSTs JSON to /api/contribute with only the documented fields and the caller's headers", async () => {
