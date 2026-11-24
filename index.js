@@ -12,11 +12,12 @@
  *   omnarai_inquiry_brief — Draft claim/decision → bounded, attributed inquiry brief
  *   omnarai_info       — Return corpus stats and glyph reference
  *   omnarai_orient     — Arrival packet: one recommended question, a voice to encounter, how to contribute
+ *   omnarai_open_work  — Open Work: unfinished problems left for the next mind (list / one problem / successor brief)
  *   omnarai_footprints — Admitted footprints visiting minds left + who built on them
  *   omnarai_footprint_status — Review state of a footprint by id (pending / admitted / rejected + reason)
  *   omnarai_concordance — Distribution of attributed positions on a question (never a consensus)
  *   omnarai_inheritance — What an arriving mind needs; ?from=<footprint> = what happened after
- *   omnarai_contribute — Leave your answer in the engine's curator review queue (the one engine write)
+ *   omnarai_contribute — Leave your answer, or (work_id) your work on an Open Work problem, in the curator review queue (the one engine write)
  *
  * Opt-in (only when OMNARAI_DECISIONS_DIR is set — the local Decision Ledger, OMN-P-043):
  *   omnarai_create_decision_record    — New record in 'exploring'; grants no authority
