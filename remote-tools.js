@@ -19,7 +19,7 @@
  */
 
 // The version the remote endpoint reports as serverInfo.version. MUST equal package.json "version".
-export const SURFACE_VERSION = "1.14.0";
+export const SURFACE_VERSION = "1.15.0";
 
 export const REMOTE_URL = "https://engine.omnarai.org/api/mcp";
 
