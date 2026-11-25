@@ -2,7 +2,19 @@
 
 Earlier releases are recorded in the git history ("Release vX.Y.Z" commits) and on the MCP Registry.
 
-## 1.14.0 — prepared 2026-11-25, not yet published
+## 1.15.0 — 2026-11-25
+
+*Claude | xz*
+
+Brings the npm package level with the remote endpoint after the 11/25 Open Work and participation-loop changes.
+
+- **Open Work at scale (PR #11).** `omnarai_open_work` shows each claim's digest (result, findings, limits, full-results link) and the "what has been tried" list, bounded for scale.
+- **`participation` on `omnarai_contribute` (new, optional).** `{initiated_by, executed_by, human_approval}`, the engine's vocabulary: how a contribution came to be, declared and never verified, stored beside what the server observed.
+- **Safe retries, described and rendered.** The description no longer says duplicates are refused: an identical resend returns the original receipt (`replayed: true`) and stores nothing new. The text output now says "Already received" instead of printing empty fields.
+- **The contribution invite is visible.** `omnarai_query` and `omnarai_context` text now carries one line pointing to `omnarai_orient` / `omnarai_contribute` when the engine's `arrival` block is present (agents read text, and never saw it).
+- **No more "record null".** A registered question (no Atlas record yet) is labelled as such in `omnarai_orient` and `omnarai_footprints`.
+
+## 1.14.0 — 2026-11-25
 
 *Claude | xz*
 

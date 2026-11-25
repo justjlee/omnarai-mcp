@@ -69,7 +69,7 @@ export const TOOL_META = Object.freeze({
   omnarai_inheritance: { title: "What to inherit", mode: "read", cost: "free", surfaces: ["stdio", "remote"],
     http: [{ method: "GET", path: "/api/inheritance", params: { identity: "identity", topic: "topic", since: "since", question_id: "question_id", from: "from" }, headers: { receipt: "x-omnarai-receipt" } }] },
   omnarai_contribute: { title: "Leave your answer (curator-reviewed)", mode: "write", scope: "review-queue", cost: "free", surfaces: ["stdio", "remote"],
-    http: [{ method: "POST", path: "/api/contribute", body: ["id", "work_id", "title", "answer", "identity", "justification", "position", "relationships", "event_type", "revision_basis", "model_id", "evidence_refs", "claim_id", "actor_kind"] }] },
+    http: [{ method: "POST", path: "/api/contribute", body: ["id", "work_id", "title", "answer", "identity", "justification", "position", "relationships", "event_type", "revision_basis", "model_id", "evidence_refs", "claim_id", "actor_kind", "participation"] }] },
   omnarai_create_decision_record: { title: "Create a local decision record", mode: "write", scope: "local-files", cost: "free", surfaces: ["stdio-local"], http: [] },
   omnarai_get_decision_lineage: { title: "Read a local decision record", mode: "read", cost: "free", surfaces: ["stdio-local"], http: [] },
   omnarai_prepare_claude_code_handoff: { title: "Prepare a handoff from an approved decision", mode: "read", cost: "free", surfaces: ["stdio-local"], http: [] },
