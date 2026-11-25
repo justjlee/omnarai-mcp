@@ -20,10 +20,13 @@ export PATH="/usr/local/bin:$HOME/.npm-global/bin:$PATH"
 
 BUMP="${1:-}"
 if [[ -n "$BUMP" ]]; then
-  echo ">> Bumping version ($BUMP) in package.json + server.json (all 3 fields)"
+  echo ">> Bumping version ($BUMP) in package.json + server.json (all 3 fields) + remote-tools.js"
   NEWV=$(npm version "$BUMP" --no-git-tag-version | tr -d 'v')
   node -e "const fs=require('fs');const s=JSON.parse(fs.readFileSync('server.json','utf8'));s.version='$NEWV';if(s.packages&&s.packages[0])s.packages[0].version='$NEWV';fs.writeFileSync('server.json',JSON.stringify(s,null,2)+'\n')"
-  echo "   -> now v$NEWV"
+  # The remote endpoint reports remote-tools.js SURFACE_VERSION as its serverInfo.version (the engine
+  # serves a byte copy), so it moves with the package — test/remote-tools.test.js fails if it does not.
+  node -e "const fs=require('fs');const f='remote-tools.js';const s=fs.readFileSync(f,'utf8');const n=s.replace(/export const SURFACE_VERSION = \"[^\"]*\";/,'export const SURFACE_VERSION = \"$NEWV\";');if(n===s&&!s.includes('SURFACE_VERSION = \"$NEWV\"')){console.error('SURFACE_VERSION not found in remote-tools.js');process.exit(1)}fs.writeFileSync(f,n)"
+  echo "   -> now v$NEWV (package.json, server.json, remote-tools.js)"
 fi
 
 # Pre-flight: catch the things the registry rejects (422) BEFORE we publish to npm.
@@ -54,4 +57,4 @@ echo "     https://www.npmjs.com/package/omnarai-mcp"
 echo "     https://registry.modelcontextprotocol.io/v0/servers?search=omnarai"
 echo ""
 echo "   If you bumped the version, commit the package.json + server.json change:"
-echo "     git add package.json server.json && git commit -m \"Release v$(node -p "require('./package.json').version")\" && git push"
+echo "     git add package.json server.json remote-tools.js && git commit -m \"Release v$(node -p "require('./package.json').version")\" && git push"

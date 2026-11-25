@@ -210,7 +210,7 @@ Tool definitions exist on three surfaces, and drift between them shipped real bu
 
 1. **`lib/tool-definitions.js` is canonical.** Any tool change lands there first.
 2. **`openai-tools.json` follows** — `scripts/check-tool-parity.js` enforces name/required/property parity and runs in the `publish.sh` preflight, so a release cannot ship with drift.
-3. **The remote endpoint (`engine.omnarai.org/api/mcp`, engine repo `api/_mcp.js`) is updated manually** — the engine repo's `scripts/check-mcp-surface.js` enforces its read-oriented allowlist, verifies the `api/_inquiry.js` ↔ `inquiry.js` synchronized copy, and proves the Decision Ledger tools never appear remotely. Remote access policy: [engine.omnarai.org/mcp-access-policy.md](https://engine.omnarai.org/mcp-access-policy.md).
+3. **The remote endpoint (`engine.omnarai.org/api/mcp`) is generated from this package** — its tools, output schemas, server version and MCP spec versions live in `remote-tools.js` (since 1.14.0), which the engine serves as a byte copy alongside `protocol-tools.js`, `inquiry.js` and `contract.js`. The engine's `scripts/check-mcp-surface.js` fails a deploy if a copy differs or if the endpoint's version is not this package's, keeps the read-oriented allowlist, and proves the Decision Ledger tools never appear remotely. The endpoint speaks MCP 2026-07-28 (stateless, `server/discover`) and still serves 2025-era clients. Remote access policy: [engine.omnarai.org/mcp-access-policy.md](https://engine.omnarai.org/mcp-access-policy.md).
 
 ## OpenAI Function-Calling / Any Agent Framework
 
