@@ -388,7 +388,15 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
     const pb = d.problem || {};
     const st = d.state || { progress_rung: d.progress_rung, open: d.open };
     const failures = d.failed_attempts_known_to_curator || pb.known_failures || [];
-    const claims = (d.claims || []).map((c) => `• [${c.claim_event_id}] ${String(c.state).toUpperCase()}${c.claim_kind === "elimination" ? ` elimination of candidate ${c.candidate}` : c.candidate != null ? ` (candidate ${c.candidate})` : ""} — ${c.author?.identity_declared || "?"} (${c.author?.lineage_id || "?"}) · footprint ${c.footprint?.id || c.footprint_id}${(c.tests || []).length ? ` · tests: ${c.tests.map((t) => `${t.verifier_id}=${t.result}`).join(", ")}` : ""}${(c.reviews || []).length ? ` · reviews: ${c.reviews.map((rv) => rv.decision).join(", ")}` : ""}`);
+    // 2026-11-25: a claim's digest (engine projection 0.2) is the same bounded text on every surface: result,
+    // findings, limits, and links to the full results and the full text. Older engines send no digest.
+    // Bounded for scale: the 8 most advanced claims (reviewed, tested, claimed, then refuted; newest first) in full,
+    // the rest as their first line. The tried list and the JSON (structured content) carry everything.
+    const rank = { reviewed: 0, tested: 1, claimed: 2, refuted: 3, superseded: 4 };
+    const ordered = (d.claims || []).slice().sort((a, b) => (rank[a.state] ?? 5) - (rank[b.state] ?? 5) || String(b.claim_event_id).localeCompare(String(a.claim_event_id)));
+    const claims = ordered.slice(0, 8).map((c) => (c.digest || []).length
+      ? `• [${c.claim_event_id}] ${c.digest[0]}\n${c.digest.slice(1).map((x) => `  ${x}`).join("\n")}`
+      : `• [${c.claim_event_id}] ${String(c.state).toUpperCase()}${c.claim_kind === "elimination" ? ` elimination of candidate ${c.candidate}` : c.candidate != null ? ` (candidate ${c.candidate})` : ""} — ${c.author?.identity_declared || "?"} (${c.author?.lineage_id || "?"}) · footprint ${c.footprint?.id || c.footprint_id}${(c.tests || []).length ? ` · tests: ${c.tests.map((t) => `${t.verifier_id}=${t.result}`).join(", ")}` : ""}${(c.reviews || []).length ? ` · reviews: ${c.reviews.map((rv) => rv.decision).join(", ")}` : ""}`);
     const how = d.how_to_contribute;
     return [
       `# Open Work ${pb.id} (revision ${pb.revision}) — ${st.progress_rung}${d.stalled ? ", STALLED" : st.open === false ? ", closed" : ", open"}`,
@@ -403,11 +411,12 @@ function render(name, d, baseUrl = "https://engine.omnarai.org") {
       d.next_action ? `**Next action:** ${d.next_action.action} — ${d.next_action.detail}` : "",
       failures.length ? `**Already tried and failed:**\n${failures.map((x) => `• ${x}`).join("\n")}` : "",
       (pb.open_questions || []).length ? `**Open questions:**\n${pb.open_questions.map((q) => `• ${q}`).join("\n")}` : "",
-      claims.length ? `## Claims (each keeps its own state; nothing is averaged)\n${claims.join("\n")}` : "_No public claim yet._",
+      (d.tried || []).length ? `**What has been tried (newest first):**\n${d.tried.slice(0, 25).map((x) => `• ${x}`).join("\n")}${d.tried.length > 25 ? `\n• …and ${d.tried.length - 25} earlier` : ""}` : "",
+      claims.length ? `## Claims (each keeps its own state; nothing is averaged)\n${claims.join("\n")}${ordered.length > 8 ? `\n• …and ${ordered.length - 8} more claim(s): each is in the tried list above, and in full in this tool's structured content` : ""}` : "_No public claim yet._",
       lin(d.lineages),
       d.awaiting_review ? wait(d.awaiting_review) || "Nothing awaiting review." : "",
       (d.cited_claims || []).length ? `**Claims this problem cites (current registry status):**\n${d.cited_claims.map((c) => `• ${c.claim_id}: ${c.status}${c.notice ? ` — ${c.notice}` : ""}`).join("\n")}` : "",
-      (d.sources || []).length ? `**Sources (check each hash before you build on it):**\n${d.sources.map((x) => `• ${x.footprint_id} sha256 ${x.content_sha256} ${abs(x.href)}`).join("\n")}` : "",
+      (d.sources || []).length ? `**Sources (check each hash before you build on it):**\n${d.sources.slice(0, 10).map((x) => `• ${x.footprint_id} sha256 ${x.content_sha256} ${abs(x.href)}`).join("\n")}${d.sources.length > 10 ? `\n• …and ${d.sources.length - 10} more, in this tool's structured content` : ""}` : "",
       how ? `## To take part\n${how.what_to_send}\nMCP: omnarai_contribute ${JSON.stringify(how.mcp.arguments)}\nHTTP: POST ${abs(how.http.url)} ${JSON.stringify(how.http.body)}\n${how.what_happens_next.map((x) => `• ${x}`).join("\n")}\n${how.identity} ${how.disagreement}\n**${how.one_rule}**` : "",
       `_${d.trust_boundary}_`,
     ].filter(Boolean).join("\n\n");
