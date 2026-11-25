@@ -23,6 +23,7 @@
 
 import { readFileSync } from "node:fs";
 import { ENGINE_TOOLS, LOCAL_ONLY_TOOL_NAMES } from "../lib/tool-definitions.js";
+import { SURFACE_VERSION } from "../remote-tools.js";
 
 const root = new URL("..", import.meta.url);
 const readJson = (name) => JSON.parse(readFileSync(new URL(name, root), "utf8"));
@@ -77,6 +78,9 @@ if (pkg.version !== srv.version) {
 const srvPkgVersion = srv.packages?.[0]?.version;
 if (srvPkgVersion && srvPkgVersion !== pkg.version) {
   problems.push(`version mismatch — package.json ${pkg.version} vs server.json packages[0] ${srvPkgVersion}`);
+}
+if (SURFACE_VERSION !== pkg.version) {
+  problems.push(`version mismatch — package.json ${pkg.version} vs remote-tools.js SURFACE_VERSION ${SURFACE_VERSION} (the remote endpoint's serverInfo.version)`);
 }
 
 // ── Report ────────────────────────────────────────────────────────────────────
