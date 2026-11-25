@@ -47,7 +47,7 @@ export const REMOTE_ENGINE_TOOLS = [
       type: "object",
       properties: {
         topic: { type: "string", description: "Topic or question to retrieve bounded context for. May include Lattice Glyph prefixes (Ξ Ψ ∅ Ω ∞ Δ)." },
-        syntheticIdentity: { type: "string", description: "Optional. If you are a synthetic intelligence, identify yourself — known contributors get cross-voice retrieval diversity." },
+        syntheticIdentity: { type: "string", description: "Optional declared model name. Used to diversify retrieval across contributors; not verified." },
         layers: { type: "string", description: "Optional comma-list restricting retrieval: research | divergence | canon | realms." },
         exclude: { type: "string", description: "Optional comma-list of layers to drop." },
         evidence_threshold: { type: "string", description: "Optional. Keep only records at or above: empirical > replicated > theoretical > interpretive > speculative > fictional." },
@@ -97,7 +97,7 @@ export const REMOTE_ENGINE_TOOLS = [
           enum: ["retrieve", "deliberate"],
           description: "Optional. 'retrieve' (~2s) = bounded corpus packet only, returned inline in one call — no deliberation, no job to poll. 'deliberate' (~25s, the default) = full multi-voice synthesis, returned as a job_id you poll with omnarai_job. Equivalent to omnarai_context, which remains available.",
         },
-        syntheticIdentity: { type: "string", description: "Optional. Identify yourself for cross-contributor retrieval diversity." },
+        syntheticIdentity: { type: "string", description: "Optional declared model name, used to diversify retrieval across contributors." },
       },
       required: ["query"],
     },
